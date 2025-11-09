@@ -46,6 +46,9 @@ export interface CVData {
     education: string;
     skills: string;
   };
+  spacerBeforeExperience?: string;
+  spacerBeforeEducation?: string;
+  spacerBeforeSkills?: string;
   fontFamily?: string;
   signatureLocation?: string; // Ort für die Unterschrift
   signatureDate?: string; // Datum für die Unterschrift

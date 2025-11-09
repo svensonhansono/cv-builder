@@ -621,14 +621,15 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   <div className="grid grid-cols-2 gap-2">
                     {(exp.bulletPoints || ["", ""]).map((bullet, idx) => (
                       <div key={idx} className="flex gap-2">
-                        <div className="flex-shrink-0 w-6 h-9 flex items-center justify-center text-purple-400">
+                        <div className="flex-shrink-0 w-6 pt-2 flex items-start justify-center text-purple-400">
                           •
                         </div>
-                        <Input
+                        <Textarea
                           value={bullet}
                           onChange={(e) => updateBulletPoint(exp.id, idx, e.target.value)}
-                          placeholder={`Stichpunkt ${idx + 1}`}
-                          className="flex-1"
+                          placeholder={`Stichpunkt ${idx + 1} - Enter für neue Zeile`}
+                          className="flex-1 min-h-[60px] resize-none"
+                          rows={2}
                         />
                         {(exp.bulletPoints || []).length > 2 && (
                           <Button

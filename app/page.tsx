@@ -26,6 +26,9 @@ const initialData: CVData = {
     education: "Ausbildung",
     skills: "Skills",
   },
+  spacerBeforeExperience: "",
+  spacerBeforeEducation: "",
+  spacerBeforeSkills: "",
   fontFamily: "Arial",
   signatureLocation: "",
   signatureDate: new Date().toISOString().split('T')[0], // Heutiges Datum
@@ -199,7 +202,7 @@ export default function Home() {
             transition={{ duration: 0.8, delay: 0.4 }}
             className="w-1/2 bg-slate-900/30 backdrop-blur-sm"
           >
-            <CVPreview data={cvData} />
+            <CVPreview data={cvData} onChange={setCvData} />
           </motion.div>
         </div>
 
@@ -226,7 +229,7 @@ export default function Home() {
                 transition={{ duration: 0.3 }}
                 className="bg-slate-900/30 backdrop-blur-sm"
               >
-                <CVPreview data={cvData} />
+                <CVPreview data={cvData} onChange={setCvData} />
               </motion.div>
             )}
           </AnimatePresence>
