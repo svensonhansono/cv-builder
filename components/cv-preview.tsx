@@ -499,7 +499,11 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             const newTitle = e.currentTarget.textContent || "Berufserfahrung";
                             onChange({
                               ...data,
-                              sectionTitles: { ...data.sectionTitles, experience: newTitle }
+                              sectionTitles: {
+                                experience: newTitle,
+                                education: data.sectionTitles?.education || "Ausbildung",
+                                skills: data.sectionTitles?.skills || "Skills"
+                              }
                             });
                           }}
                         >
@@ -601,7 +605,11 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             const newTitle = e.currentTarget.textContent || "Ausbildung";
                             onChange({
                               ...data,
-                              sectionTitles: { ...data.sectionTitles, education: newTitle }
+                              sectionTitles: {
+                                experience: data.sectionTitles?.experience || "Berufserfahrung",
+                                education: newTitle,
+                                skills: data.sectionTitles?.skills || "Skills"
+                              }
                             });
                           }}
                         >
@@ -693,7 +701,11 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             const newTitle = e.currentTarget.textContent || "Skills";
                             onChange({
                               ...data,
-                              sectionTitles: { ...data.sectionTitles, skills: newTitle }
+                              sectionTitles: {
+                                experience: data.sectionTitles?.experience || "Berufserfahrung",
+                                education: data.sectionTitles?.education || "Ausbildung",
+                                skills: newTitle
+                              }
                             });
                           }}
                         >
