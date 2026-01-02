@@ -1837,7 +1837,7 @@ console.log('Proxy OK');
 });
 
 // ======================
-// Search Company Contact Info
+// Search Company Contact Info via Google
 // ======================
 export const searchCompanyContact = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
@@ -1853,76 +1853,207 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
     const company = req.query.company as string;
     const location = req.query.location as string;
 
-    if (!company || !location) {
-      res.status(400).json({ error: 'Company and location are required' });
+    if (!company) {
+      res.status(400).json({ error: 'Company is required' });
       return;
     }
 
-    console.log('🔍 Searching for company contact:', company, location);
-
-    // Clean company name for URL guessing
-    const companyNameClean = company
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
-
-    const possibleUrls = [
-      `https://www.${companyNameClean}.de`,
-      `https://${companyNameClean}.de`,
-      `https://www.${companyNameClean}.com`,
-      `https://${companyNameClean}.com`,
-    ];
+    console.log('🔍 Searching Google for company contact:', company, location);
 
     let allContacts = {
       emails: [] as string[],
       phones: [] as string[],
-      websites: [] as string[]
+      websites: [] as string[],
+      address: '' as string
     };
 
-    // Try fetching from possible company websites
-    for (const url of possibleUrls) {
+    // Step 1: Try DuckDuckGo HTML search (doesn't block like Google)
+    const searchQuery = `${company} ${location || ''}`.trim();
+    const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery + ' kontakt telefon')}`;
+
+    try {
+      const searchResponse = await axios.get(ddgUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+        timeout: 10000
+      });
+
+      const $ = cheerio.load(searchResponse.data);
+
+      // Extract URLs from DuckDuckGo results
+      $('.result__url').each((_, el) => {
+        const urlText = $(el).text().trim();
+        if (urlText && !urlText.includes('duckduckgo') &&
+            !urlText.includes('google') &&
+            !urlText.includes('facebook') &&
+            !urlText.includes('wikipedia')) {
+          const cleanUrl = urlText.startsWith('http') ? urlText : 'https://' + urlText;
+          allContacts.websites.push(cleanUrl.split('/')[0] + '//' + cleanUrl.split('/')[2]);
+        }
+      });
+
+      // Also extract from href
+      $('a.result__a').each((_, el) => {
+        const href = $(el).attr('href');
+        if (href && href.includes('uddg=')) {
+          try {
+            const urlMatch = href.match(/uddg=([^&]+)/);
+            if (urlMatch) {
+              const url = decodeURIComponent(urlMatch[1]);
+              if (!url.includes('duckduckgo') &&
+                  !url.includes('google') &&
+                  !url.includes('facebook') &&
+                  !url.includes('wikipedia') &&
+                  !url.includes('arbeitsagentur')) {
+                allContacts.websites.push(url);
+              }
+            }
+          } catch (e) {}
+        }
+      });
+
+      // Extract phone numbers from search result snippets
+      const pageText = $.text();
+      const phonePatterns = [
+        /(?:Telefon|Tel\.?|Fon)[:\s]*([0-9\s\-\/\(\)]{8,20})/gi,
+        /(\+49[\s\-]?[0-9\s\-\/]{8,})/g,
+        /(0[0-9]{2,5}[\s\-\/]?[0-9]{3,}[\s\-\/]?[0-9]{2,})/g
+      ];
+
+      for (const pattern of phonePatterns) {
+        const matches = pageText.match(pattern);
+        if (matches) {
+          for (const match of matches) {
+            const cleanPhone = match.replace(/(?:Telefon|Tel\.?|Fon)[:\s]*/i, '').trim();
+            if (cleanPhone.length >= 8 && cleanPhone.length <= 20 && /\d{4,}/.test(cleanPhone)) {
+              allContacts.phones.push(cleanPhone);
+            }
+          }
+        }
+      }
+
+      console.log('✅ DuckDuckGo search completed, found:', {
+        phones: allContacts.phones.length,
+        websites: allContacts.websites.length
+      });
+
+    } catch (ddgErr: any) {
+      console.log('DuckDuckGo search failed:', ddgErr.message);
+    }
+
+    // Step 2: If we found a website, try to get more contact info from it
+    if (allContacts.websites.length > 0 && (allContacts.phones.length === 0 || allContacts.emails.length === 0)) {
+      const websiteUrl = allContacts.websites[0];
       try {
-        console.log('Trying URL:', url);
-        const response = await axios.get(url, {
+        console.log('Fetching company website:', websiteUrl);
+        const siteResponse = await axios.get(websiteUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
           },
-          timeout: 5000
+          timeout: 8000,
+          maxRedirects: 3
         });
 
-        if (response.status === 200) {
-          const html = response.data;
-          const contacts = extractContactInfoFromHTML(html);
+        const contacts = extractContactInfoFromHTML(siteResponse.data);
+        allContacts.emails.push(...contacts.emails);
+        allContacts.phones.push(...contacts.phones);
 
-          // Add the found website URL
-          contacts.websites.unshift(url);
-
-          allContacts = {
-            emails: [...allContacts.emails, ...contacts.emails],
-            phones: [...allContacts.phones, ...contacts.phones],
-            websites: [...allContacts.websites, ...contacts.websites]
-          };
-
-          // If we found contacts, break
-          if (contacts.emails.length > 0 || contacts.phones.length > 0) {
-            console.log('✅ Found contacts on:', url);
-            break;
+        // Also try /kontakt or /impressum page
+        const baseUrl = new URL(websiteUrl).origin;
+        for (const path of ['/kontakt', '/impressum', '/contact', '/about']) {
+          try {
+            const subResponse = await axios.get(baseUrl + path, {
+              headers: { 'User-Agent': 'Mozilla/5.0' },
+              timeout: 5000
+            });
+            const subContacts = extractContactInfoFromHTML(subResponse.data);
+            allContacts.emails.push(...subContacts.emails);
+            allContacts.phones.push(...subContacts.phones);
+          } catch (e) {
+            // Ignore errors for subpages
           }
         }
-      } catch (err) {
-        console.log('Failed to fetch:', url);
-        // Continue to next URL
+      } catch (siteErr: any) {
+        console.log('Website fetch failed:', siteErr.message);
       }
     }
 
-    // Deduplicate
-    allContacts.emails = [...new Set(allContacts.emails)];
-    allContacts.phones = [...new Set(allContacts.phones)];
-    allContacts.websites = [...new Set(allContacts.websites)];
+    // Step 3: Fallback - try direct URL guessing
+    if (allContacts.phones.length === 0 && allContacts.emails.length === 0) {
+      // Extract just the main company name (first word or before GmbH/AG etc)
+      const companyParts = company.split(/\s+/);
+      const mainName = companyParts[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      const possibleUrls = [
+        `https://www.${mainName}.de`,
+        `https://${mainName}.de`,
+      ];
+
+      for (const url of possibleUrls) {
+        try {
+          const response = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0' },
+            timeout: 5000
+          });
+          if (response.status === 200) {
+            const contacts = extractContactInfoFromHTML(response.data);
+            if (contacts.emails.length > 0 || contacts.phones.length > 0) {
+              allContacts.emails.push(...contacts.emails);
+              allContacts.phones.push(...contacts.phones);
+              allContacts.websites.unshift(url);
+              break;
+            }
+          }
+        } catch (err) {
+          // Continue
+        }
+      }
+    }
+
+    // Filter and deduplicate
+    // Only keep real emails (must have @ and proper domain)
+    allContacts.emails = [...new Set(allContacts.emails)]
+      .filter(email =>
+        email.includes('@') &&
+        !email.includes('.png') &&
+        !email.includes('.jpg') &&
+        !email.includes('.gif') &&
+        !email.includes('.ico') &&
+        !email.includes('favicon') &&
+        !email.includes('google') &&
+        !email.includes('facebook') &&
+        email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
+      )
+      .slice(0, 3);
+
+    // Normalize and deduplicate phone numbers (remove duplicates with different formatting)
+    const normalizePhone = (phone: string) => phone.replace(/[\s\-\/\(\)]/g, '');
+    const seenPhones = new Set<string>();
+    allContacts.phones = allContacts.phones
+      .filter(phone => {
+        const normalized = normalizePhone(phone);
+        if (seenPhones.has(normalized) || normalized.length < 8) return false;
+        seenPhones.add(normalized);
+        return true;
+      })
+      .slice(0, 3);
+
+    // Filter websites - only keep main company sites, not directories
+    allContacts.websites = [...new Set(allContacts.websites)]
+      .filter(url =>
+        !url.includes('gelbeseiten') &&
+        !url.includes('11880') &&
+        !url.includes('cylex') &&
+        !url.includes('yelp') &&
+        !url.includes('golocal') &&
+        !url.includes('meinestadt')
+      )
+      .slice(0, 3);
 
     res.json({
       success: true,
-      query: `${company} ${location}`,
+      query: searchQuery,
       contacts: allContacts
     });
 
