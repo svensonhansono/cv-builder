@@ -2038,7 +2038,9 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       'kununu', 'xing', 'linkedin', 'indeed', 'stepstone', 'monster', 'gartenbau.org',
       'haendlerschutz', 'trustpilot', 'provenexpert', 'google', 'bing', 'yahoo',
       'firmania', 'northdata', 'unternehmensverzeichnis', 'firmenabc', 'kompany',
-      'dnb.com', 'creditreform', 'hoppenstedt', 'firmeneintrag', 'stadtbranchenbuch'
+      'dnb.com', 'creditreform', 'hoppenstedt', 'firmeneintrag', 'stadtbranchenbuch',
+      'telefonbuch', 'dastelefonbuch', 'dasoertliche', 'oertliche', 'tel.search',
+      'jobs-in-', 'vrm-jobs', 'arbeitsagentur', 'jobboerse', 'stellenanzeigen'
     ];
 
     let firstValidWebsite = '';
@@ -2049,14 +2051,17 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
         break;
       }
     }
-    allContacts.websites = firstValidWebsite ? [firstValidWebsite] : [];
+
+    // IMPORTANT: Only return phone number if we found a REAL company website
+    // This prevents returning random phone numbers from directory sites
+    const hasRealWebsite = firstValidWebsite !== '';
 
     res.json({
       success: true,
       query: searchQuery,
       contacts: {
-        phone: allContacts.phones[0] || null,
-        website: allContacts.websites[0] || null
+        phone: hasRealWebsite ? (allContacts.phones[0] || null) : null,
+        website: hasRealWebsite ? firstValidWebsite : null
       }
     });
 
