@@ -1,0 +1,742 @@
+"use client";
+
+import { useRef, useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { CVData } from "@/types/cv";
+import { Button } from "@/components/ui/button";
+import { Download, Crown } from "lucide-react";
+import { useAuth } from "@/components/auth-context";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+
+interface CVPreviewV3Props {
+  data: CVData;
+  onChange: (data: CVData) => void;
+}
+
+export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
+  const cvContainerRef = useRef<HTMLDivElement>(null);
+  const contentContainerRef = useRef<HTMLDivElement>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
+  const { isPremium } = useAuth();
+
+  // Adjustable margins in cm
+  const [margins, setMargins] = useState({
+    top: 1.5,
+    bottom: 1.5,
+    left: 2.5,
+    right: 2.0
+  });
+
+  // Calculate page breaks based on current margins
+  const contentHeight = 29.7 - margins.top - margins.bottom;
+
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Calculate total pages based on content height
+  useEffect(() => {
+    if (contentContainerRef.current) {
+      const contentHeightPx = contentContainerRef.current.scrollHeight;
+      const pageHeightPx = contentContainerRef.current.parentElement?.offsetHeight || 0;
+      const pages = Math.ceil(contentHeightPx / pageHeightPx) || 1;
+      setTotalPages(pages);
+    }
+  }, [data, margins]);
+
+  const formatDate = (date: string) => {
+    if (!date) return "";
+    const [year, month, day] = date.split("-");
+    return `${day}.${month}.${year}`;
+  };
+
+  // Handle dragging of margin lines
+  const handleMarginDrag = (e: React.MouseEvent, marginType: 'top' | 'bottom' | 'left' | 'right') => {
+    e.preventDefault();
+    const container = e.currentTarget.parentElement;
+    if (!container) return;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const rect = container.getBoundingClientRect();
+
+      if (marginType === 'top') {
+        const offsetY = moveEvent.clientY - rect.top;
+        const cmValue = (offsetY / rect.height) * 29.7;
+        setMargins(prev => ({ ...prev, top: Math.max(0.5, Math.min(10, cmValue)) }));
+      } else if (marginType === 'bottom') {
+        const offsetY = rect.bottom - moveEvent.clientY;
+        const cmValue = (offsetY / rect.height) * 29.7;
+        setMargins(prev => ({ ...prev, bottom: Math.max(0.5, Math.min(10, cmValue)) }));
+      } else if (marginType === 'left') {
+        const offsetX = moveEvent.clientX - rect.left;
+        const cmValue = (offsetX / rect.width) * 21;
+        setMargins(prev => ({ ...prev, left: Math.max(0.5, Math.min(8, cmValue)) }));
+      } else if (marginType === 'right') {
+        const offsetX = rect.right - moveEvent.clientX;
+        const cmValue = (offsetX / rect.width) * 21;
+        setMargins(prev => ({ ...prev, right: Math.max(0.5, Math.min(8, cmValue)) }));
+      }
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleDownload = async () => {
+    if (isGenerating) return;
+
+    if (!isPremium()) {
+      setShowUpgradeMessage(true);
+      setTimeout(() => setShowUpgradeMessage(false), 5000);
+      return;
+    }
+
+    setIsGenerating(true);
+
+    // Hide margin guides during PDF export
+    const marginGuides = document.querySelectorAll('[data-margin-guides]');
+    marginGuides.forEach(guide => {
+      (guide as HTMLElement).style.visibility = 'hidden';
+    });
+
+    // Remove glass effect temporarily for consistent background color
+    const hadGlass = cvContainerRef.current?.classList.contains('glass');
+    if (cvContainerRef.current && hadGlass) {
+      cvContainerRef.current.classList.remove('glass');
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    try {
+      // Check if content container exists (the area inside margin guides)
+      if (!contentContainerRef.current) {
+        throw new Error("Content container not found");
+      }
+
+      // Capture only the content area (inside margins) as it appears now
+      const canvas = await html2canvas(contentContainerRef.current, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: contentContainerRef.current.offsetWidth,
+        height: contentContainerRef.current.offsetHeight,
+        foreignObjectRendering: false,
+        onclone: (clonedDoc) => {
+          // Convert Grid to Flexbox for better rendering
+          const gridElements = clonedDoc.querySelectorAll('[style*="grid"]');
+          gridElements.forEach((element) => {
+            const el = element as HTMLElement;
+            if (el.style.display === 'grid') {
+              // Convert to flexbox
+              el.style.display = 'flex';
+              el.style.flexDirection = 'row';
+              el.style.width = '100%';
+
+              // Set children widths (30% / 70% for V3)
+              const children = el.children;
+              if (children.length >= 2) {
+                (children[0] as HTMLElement).style.width = '30%';
+                (children[0] as HTMLElement).style.flexShrink = '0';
+                (children[1] as HTMLElement).style.width = '70%';
+                (children[1] as HTMLElement).style.flexShrink = '0';
+              }
+            }
+          });
+        }
+      });
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+
+      const imgData = canvas.toDataURL("image/jpeg", 0.95);
+      pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
+
+      const fileName = data.personalInfo.firstName && data.personalInfo.lastName
+        ? `${data.personalInfo.firstName}_${data.personalInfo.lastName}_CV.pdf`
+        : "Lebenslauf.pdf";
+
+      pdf.save(fileName);
+    } catch (error) {
+      console.error("Fehler beim PDF-Export:", error);
+      alert("Fehler beim Erstellen der PDF.");
+    } finally {
+      // Show margin guides again
+      marginGuides.forEach(guide => {
+        (guide as HTMLElement).style.visibility = '';
+      });
+
+      // Restore glass effect
+      if (cvContainerRef.current && hadGlass) {
+        cvContainerRef.current.classList.add('glass');
+      }
+
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="h-full overflow-y-auto">
+      <div className="p-4 sm:p-6 lg:p-8">
+        {showUpgradeMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="mb-4 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-lg p-4"
+          >
+            <div className="flex items-center gap-3">
+              <Crown className="w-5 h-5 text-yellow-400" />
+              <div>
+                <p className="font-semibold text-sm">Premium Feature</p>
+                <p className="text-xs text-foreground/70">
+                  Upgrade für nur €1,99/Monat um alle Vorlagen und PDF-Export freizuschalten
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full mx-auto"
+          style={{ maxWidth: '210mm' }}
+        >
+          {/* Top Bar */}
+          <div className="flex justify-between items-center mb-4 sm:mb-6">
+            {/* Page Navigation */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button
+                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
+              >
+                ←
+              </Button>
+
+              <span className="text-xs sm:text-sm text-foreground/70 whitespace-nowrap">
+                Seite {currentPage + 1} / {totalPages}
+              </span>
+
+              <Button
+                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                disabled={currentPage >= totalPages - 1}
+                variant="outline"
+                size="sm"
+                className="gap-1 text-xs"
+              >
+                →
+              </Button>
+            </div>
+
+            {/* Download Button */}
+            <Button
+              onClick={handleDownload}
+              disabled={isGenerating}
+              className="gap-2 text-xs sm:text-sm"
+            >
+              <Download className={`w-3 h-3 sm:w-4 sm:h-4 ${isGenerating ? 'animate-bounce' : ''}`} />
+              <span className="hidden sm:inline">
+                {isGenerating ? "PDF wird erstellt..." : "PDF Exportieren"}
+              </span>
+              <span className="sm:hidden">
+                {isGenerating ? "..." : "PDF"}
+              </span>
+            </Button>
+          </div>
+
+          {/* CV Container */}
+          <div
+            ref={cvContainerRef}
+            className="rounded-lg sm:rounded-xl lg:rounded-2xl glass shadow-2xl shadow-purple-500/20 border border-white/10 relative"
+            style={{
+              width: '210mm',
+              height: '297mm',
+              fontFamily: data.fontFamily || 'Arial, sans-serif',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Draggable margin guides */}
+            <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }} data-margin-guides>
+              {/* Top margin line */}
+              <div
+                className="absolute left-0 right-0 cursor-ns-resize hover:bg-purple-500/30 transition-colors pointer-events-auto"
+                style={{
+                  top: `${margins.top}cm`,
+                  height: '4px',
+                  borderTop: '2px dashed #a855f7',
+                }}
+                onMouseDown={(e) => handleMarginDrag(e, 'top')}
+              >
+                <div className="absolute left-1/2 -translate-x-1/2 -top-6 bg-purple-500 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none">
+                  ↕ Oben: {margins.top.toFixed(1)} cm
+                </div>
+              </div>
+
+              {/* Bottom margin line */}
+              <div
+                className="absolute left-0 right-0 cursor-ns-resize hover:bg-purple-500/30 transition-colors pointer-events-auto"
+                style={{
+                  bottom: `${margins.bottom}cm`,
+                  height: '4px',
+                  borderBottom: '2px dashed #a855f7',
+                }}
+                onMouseDown={(e) => handleMarginDrag(e, 'bottom')}
+              >
+                <div className="absolute left-1/2 -translate-x-1/2 -bottom-6 bg-purple-500 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none">
+                  ↕ Unten: {margins.bottom.toFixed(1)} cm
+                </div>
+              </div>
+
+              {/* Left margin line */}
+              <div
+                className="absolute top-0 bottom-0 cursor-ew-resize hover:bg-purple-500/30 transition-colors pointer-events-auto"
+                style={{
+                  left: `${margins.left}cm`,
+                  width: '4px',
+                  borderLeft: '2px dashed #a855f7',
+                }}
+                onMouseDown={(e) => handleMarginDrag(e, 'left')}
+              >
+                <div className="absolute top-1/2 -translate-y-1/2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg) translateY(-50%)', right: '4px' }}>
+                  ↔ Links: {margins.left.toFixed(1)} cm
+                </div>
+              </div>
+
+              {/* Right margin line */}
+              <div
+                className="absolute top-0 bottom-0 cursor-ew-resize hover:bg-purple-500/30 transition-colors pointer-events-auto"
+                style={{
+                  right: `${margins.right}cm`,
+                  width: '4px',
+                  borderRight: '2px dashed #a855f7',
+                }}
+                onMouseDown={(e) => handleMarginDrag(e, 'right')}
+              >
+                <div className="absolute top-1/2 -translate-y-1/2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg) translateY(-50%)', left: '4px' }}>
+                  ↔ Rechts: {margins.right.toFixed(1)} cm
+                </div>
+              </div>
+            </div>
+
+            {/* Content area */}
+            <div
+              ref={contentContainerRef}
+              className="absolute"
+              style={{
+                zIndex: 1,
+                top: `${margins.top}cm`,
+                left: `${margins.left}cm`,
+                right: `${margins.right}cm`,
+                overflow: 'visible',
+              }}
+            >
+              {/* Two Column Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '30% 70%',
+                backgroundColor: '#ffffff',
+                color: '#000000',
+                minHeight: `${contentHeight}cm`,
+              }}>
+            {/* Left Column - Dark Blue Background */}
+            <div style={{ backgroundColor: '#475d6d', color: '#ffffff', padding: '1.5rem 1.2rem 1.5rem 1.2rem', position: 'relative' }}>
+
+              {/* Photo with black border */}
+              {data.personalInfo.photoUrl && (
+                <div className="mb-6">
+                  <div style={{
+                    border: '3px solid #000000',
+                    padding: '0',
+                    backgroundColor: '#000000',
+                  }}>
+                    <img
+                      src={data.personalInfo.photoUrl}
+                      alt={`${data.personalInfo.firstName} ${data.personalInfo.lastName}`}
+                      style={{
+                        width: '100%',
+                        height: 'auto',
+                        display: 'block',
+                        aspectRatio: '3/4',
+                        objectFit: 'cover',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* PERSÖNLICHES */}
+              <section className="mb-6">
+                <h2 style={{
+                  fontSize: '0.85rem',
+                  fontWeight: 'bold',
+                  marginBottom: '0.8rem',
+                  letterSpacing: '0.05em',
+                }}>
+                  PERSÖNLICHES
+                </h2>
+                <div style={{ fontSize: '0.7rem', lineHeight: '1.6' }}>
+                  {data.personalInfo.birthDate && (
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <div style={{ fontWeight: '600', fontSize: '0.65rem', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>GEBURTSDATUM</div>
+                      <div>{formatDate(data.personalInfo.birthDate)}</div>
+                    </div>
+                  )}
+                  {data.personalInfo.maritalStatus && (
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <div style={{ fontWeight: '600', fontSize: '0.65rem', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>FAMILIENSTAND</div>
+                      <div>{data.personalInfo.maritalStatus}</div>
+                    </div>
+                  )}
+                  {data.personalInfo.nationality && (
+                    <div style={{ marginBottom: '0.6rem' }}>
+                      <div style={{ fontWeight: '600', fontSize: '0.65rem', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>STAATSANGEHÖRIGKEIT</div>
+                      <div>{data.personalInfo.nationality}</div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* SPRACHEN */}
+              {data.languages && data.languages.length > 0 && (
+                <section className="mb-6">
+                  <h2 style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.8rem',
+                    letterSpacing: '0.05em',
+                  }}>
+                    SPRACHEN
+                  </h2>
+                  <div style={{ fontSize: '0.7rem', lineHeight: '1.6' }}>
+                    {data.languages.map((lang) => (
+                      <div key={lang.id} style={{ marginBottom: '0.6rem' }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.65rem', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>{lang.name.toUpperCase()}</div>
+                        <div>{lang.level}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* IT-KENNTNISSE */}
+              {data.softwareSkills && data.softwareSkills.length > 0 && (
+                <section className="mb-6">
+                  <h2 style={{
+                    fontSize: '0.85rem',
+                    fontWeight: 'bold',
+                    marginBottom: '0.8rem',
+                    letterSpacing: '0.05em',
+                  }}>
+                    IT-KENNTNISSE
+                  </h2>
+                  <div style={{ fontSize: '0.7rem', lineHeight: '1.6' }}>
+                    {data.softwareSkills.map((skill) => (
+                      <div key={skill.id} style={{ marginBottom: '0.6rem' }}>
+                        <div style={{ fontWeight: '600', fontSize: '0.65rem', letterSpacing: '0.05em', marginBottom: '0.1rem' }}>{skill.name.toUpperCase()}</div>
+                        <div>{skill.level}</div>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+
+            {/* Right Column - White Background */}
+            <div style={{ backgroundColor: '#ffffff', padding: '1.5rem 2rem 2rem 1rem', position: 'relative' }}>
+              {/* Contact Info - Top Right */}
+              <div style={{
+                position: 'absolute',
+                top: '1.5rem',
+                right: '2rem',
+                textAlign: 'right',
+                fontSize: '0.6rem',
+                lineHeight: '1.5',
+                color: '#666666',
+              }}>
+                {data.personalInfo.location && <div>{data.personalInfo.location}</div>}
+                {data.personalInfo.phone && <div>{data.personalInfo.phone}</div>}
+                {data.personalInfo.email && <div>{data.personalInfo.email}</div>}
+              </div>
+
+              {/* Name */}
+              <div style={{ marginTop: '4rem', marginBottom: '1.5rem', paddingRight: '2rem', paddingLeft: '0.5cm' }}>
+                <h1
+                  style={{
+                    fontSize: '2.5rem',
+                    fontWeight: 'bold',
+                    color: '#000000',
+                    letterSpacing: '0.3em',
+                    marginBottom: '0.8rem',
+                    lineHeight: '1',
+                  }}
+                  contentEditable={true}
+                  suppressContentEditableWarning
+                  className="outline-none"
+                  onBlur={(e) => {
+                    const fullName = e.currentTarget.textContent || "";
+                    const parts = fullName.split(" ");
+                    const firstName = parts[0] || "";
+                    const lastName = parts.slice(1).join(" ") || "";
+                    onChange({
+                      ...data,
+                      personalInfo: {
+                        ...data.personalInfo,
+                        firstName,
+                        lastName
+                      }
+                    });
+                  }}
+                >
+                  {data.personalInfo.firstName} {data.personalInfo.lastName}
+                </h1>
+
+                {/* Horizontal line with job title - starts from left edge */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem' }}>
+                  <div style={{
+                    flex: '1',
+                    height: '1.5px',
+                    backgroundColor: '#000000',
+                  }} />
+                  <div
+                    style={{
+                      fontSize: '0.7rem',
+                      color: '#666666',
+                      letterSpacing: '0.05em',
+                      whiteSpace: 'nowrap',
+                    }}
+                    contentEditable={true}
+                    suppressContentEditableWarning
+                    className="outline-none"
+                    onBlur={(e) => {
+                      onChange({
+                        ...data,
+                        personalInfo: {
+                          ...data.personalInfo,
+                          title: e.currentTarget.textContent || ""
+                        }
+                      });
+                    }}
+                  >
+                    {data.personalInfo.title || "DEIN JOBTITEL"}
+                  </div>
+                </div>
+              </div>
+
+              {/* BERUFSERFAHRUNG */}
+              {data.experiences.length > 0 && (
+                <section className="mb-6">
+                  <h2 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    marginBottom: '1.5rem',
+                    letterSpacing: '0.1em',
+                    color: '#000000',
+                  }}>
+                    BERUFSERFAHRUNG
+                  </h2>
+                  <div style={{ fontSize: '0.75rem' }}>
+                    {data.experiences.map((exp, index) => (
+                      <div key={exp.id} style={{ marginBottom: '1.5rem' }}>
+                        <div
+                          contentEditable={true}
+                          suppressContentEditableWarning
+                          className="outline-none"
+                          style={{ fontWeight: 'bold', fontSize: '0.8rem', marginBottom: '0.25rem', color: '#000000', cursor: 'text' }}
+                          onBlur={(e) => {
+                            const newExps = [...data.experiences];
+                            newExps[index] = { ...newExps[index], position: e.currentTarget.textContent || "" };
+                            onChange({ ...data, experiences: newExps });
+                          }}
+                        >
+                          {exp.position}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#666666', marginBottom: '0.5rem' }}>
+                          <span
+                            contentEditable={true}
+                            suppressContentEditableWarning
+                            className="outline-none"
+                            onBlur={(e) => {
+                              const newExps = [...data.experiences];
+                              newExps[index] = { ...newExps[index], company: e.currentTarget.textContent || "" };
+                              onChange({ ...data, experiences: newExps });
+                            }}
+                          >
+                            {exp.company}
+                          </span>
+                          <span style={{ float: 'right' }}>
+                            {formatDate(exp.startDate)} - {exp.current ? "aktuell" : formatDate(exp.endDate)}
+                          </span>
+                        </div>
+                        {exp.bulletPoints && exp.bulletPoints.length > 0 && (
+                          <ul style={{ paddingLeft: '1.2rem', margin: '0' }}>
+                            {exp.bulletPoints.filter(bp => bp.trim()).map((bullet, idx) => {
+                              const originalIndex = exp.bulletPoints.findIndex((bp, i) => i >= idx && bp === bullet);
+                              return (
+                                <li key={idx} style={{ marginBottom: '0.25rem' }}>
+                                  <span
+                                    contentEditable={true}
+                                    suppressContentEditableWarning
+                                    className="outline-none"
+                                    onBlur={(e) => {
+                                      const newExps = [...data.experiences];
+                                      const newBulletPoints = [...newExps[index].bulletPoints];
+                                      newBulletPoints[originalIndex] = e.currentTarget.textContent || "";
+                                      newExps[index] = { ...newExps[index], bulletPoints: newBulletPoints };
+                                      onChange({ ...data, experiences: newExps });
+                                    }}
+                                  >
+                                    {bullet}
+                                  </span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* BILDUNGSWEG */}
+              {data.education.length > 0 && (
+                <section className="mb-6">
+                  <h2 style={{
+                    fontSize: '0.9rem',
+                    fontWeight: 'bold',
+                    marginBottom: '1.5rem',
+                    letterSpacing: '0.1em',
+                    color: '#000000',
+                  }}>
+                    BILDUNGSWEG
+                  </h2>
+                  <div style={{ fontSize: '0.75rem' }}>
+                    {data.education.map((edu, index) => (
+                      <div key={edu.id} style={{ marginBottom: '1.5rem' }}>
+                        <div
+                          style={{ fontWeight: 'bold', fontSize: '0.8rem', marginBottom: '0.25rem', color: '#000000' }}
+                          contentEditable={true}
+                          suppressContentEditableWarning
+                          className="outline-none"
+                          onBlur={(e) => {
+                            const text = e.currentTarget.textContent || "";
+                            const newEducation = [...data.education];
+                            newEducation[index] = { ...newEducation[index], degree: text, field: "" };
+                            onChange({ ...data, education: newEducation });
+                          }}
+                        >
+                          {edu.degree} {edu.field && `${edu.field}`}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#666666', marginBottom: '0.5rem' }}>
+                          <span
+                            contentEditable={true}
+                            suppressContentEditableWarning
+                            className="outline-none"
+                            onBlur={(e) => {
+                              const newEducation = [...data.education];
+                              newEducation[index] = { ...newEducation[index], institution: e.currentTarget.textContent || "" };
+                              onChange({ ...data, education: newEducation });
+                            }}
+                          >
+                            {edu.institution}
+                          </span>
+                          <span style={{ float: 'right' }}>
+                            {formatDate(edu.startDate)} - {edu.current ? "aktuell" : formatDate(edu.endDate)}
+                          </span>
+                        </div>
+                        {edu.degree.includes("Abschluss:") && (
+                          <div style={{ fontSize: '0.7rem', color: '#666666' }}>
+                            {edu.degree.split("Abschluss:")[1]}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Signature */}
+              {data.showSignature && (data.signatureName || data.signatureImageUrl || data.signatureLocation || data.signatureDate) && (
+                <div style={{ marginTop: '3rem', fontSize: '0.75rem' }}>
+                  {/* Show signature image if available, otherwise show text signature */}
+                  {data.signatureImageUrl ? (
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <img
+                        src={data.signatureImageUrl}
+                        alt="Signature"
+                        style={{
+                          maxWidth: '200px',
+                          maxHeight: '80px',
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    data.signatureName && (
+                      <div
+                        style={{
+                          fontFamily: data.signatureFont || 'Dancing Script',
+                          fontSize: '1.5rem',
+                          marginBottom: '0.5rem',
+                          color: '#000000',
+                        }}
+                        contentEditable={true}
+                        suppressContentEditableWarning
+                        className="outline-none"
+                        onBlur={(e) => {
+                          onChange({
+                            ...data,
+                            signatureName: e.currentTarget.textContent || ""
+                          });
+                        }}
+                      >
+                        {data.signatureName}
+                      </div>
+                    )
+                  )}
+                  <div
+                    style={{ color: '#666666', fontSize: '0.7rem' }}
+                    contentEditable={true}
+                    suppressContentEditableWarning
+                    className="outline-none"
+                    onBlur={(e) => {
+                      const text = e.currentTarget.textContent || "";
+                      onChange({
+                        ...data,
+                        signatureLocation: text.split(",")[0]?.trim() || "",
+                      });
+                    }}
+                  >
+                    {data.signatureLocation && data.signatureDate ?
+                      `${data.signatureLocation}, den ${formatDate(data.signatureDate)}` :
+                      "Stadt, den Datum"}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}
