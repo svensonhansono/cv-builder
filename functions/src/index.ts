@@ -2033,7 +2033,10 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
     allContacts.phones = allContacts.phones
       .filter(phone => {
         const normalized = normalizePhone(phone);
-        if (seenPhones.has(normalized) || normalized.length < 8) return false;
+        // Must be at least 10 digits for a valid German phone number with area code
+        // And must start with 0 or + (valid German format)
+        if (seenPhones.has(normalized) || normalized.length < 10) return false;
+        if (!normalized.startsWith('0') && !normalized.startsWith('+')) return false;
         seenPhones.add(normalized);
         return true;
       })
@@ -2047,7 +2050,18 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
         !url.includes('cylex') &&
         !url.includes('yelp') &&
         !url.includes('golocal') &&
-        !url.includes('meinestadt')
+        !url.includes('meinestadt') &&
+        !url.includes('bizdb') &&
+        !url.includes('oeffnungszeitenbuch') &&
+        !url.includes('aktivbruecke') &&
+        !url.includes('branchen') &&
+        !url.includes('firmenfinden') &&
+        !url.includes('wlw.de') &&
+        !url.includes('firmenwissen') &&
+        !url.includes('handwerk.de') &&
+        !url.includes('klicktel') &&
+        !url.includes('hotfrog') &&
+        !url.includes('branchenbuch')
       )
       .slice(0, 3);
 
