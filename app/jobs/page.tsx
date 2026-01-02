@@ -1006,10 +1006,9 @@ export default function JobsPage() {
                       <h4 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-3">
                         Stellenbeschreibung
                       </h4>
-                      <div
-                        className="text-foreground/90 text-sm whitespace-pre-wrap"
-                        dangerouslySetInnerHTML={{ __html: highlightContactInfo(jobDetails.stellenbeschreibung) }}
-                      />
+                      <div className="text-foreground/90 text-sm whitespace-pre-wrap">
+                        {highlightContactInfo(jobDetails.stellenbeschreibung)}
+                      </div>
                     </div>
                   )}
 
@@ -1071,19 +1070,6 @@ export default function JobsPage() {
                       {/* Native Job-Details von API */}
                       {jobDetails && (
                         <div className="space-y-6">
-                          {/* Stellenbeschreibung */}
-                          {jobDetails.stellenbeschreibung && (
-                            <div className="space-y-3">
-                              <h4 className="text-sm font-semibold text-foreground/70 uppercase tracking-wider">
-                                Stellenbeschreibung
-                              </h4>
-                              <div
-                                className="prose prose-invert prose-sm max-w-none text-foreground/80"
-                                dangerouslySetInnerHTML={{ __html: highlightContactInfo(jobDetails.stellenbeschreibung) }}
-                              />
-                            </div>
-                          )}
-
                           {/* Anforderungen */}
                           {jobDetails.fertigkeiten && jobDetails.fertigkeiten.length > 0 && (
                             <div className="space-y-3">
