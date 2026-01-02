@@ -1942,9 +1942,59 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       console.log('DuckDuckGo search failed:', ddgErr.message);
     }
 
-    // Step 2: If we found a website, try to get more contact info from it
-    if (allContacts.websites.length > 0 && (allContacts.phones.length === 0 || allContacts.emails.length === 0)) {
-      const websiteUrl = allContacts.websites[0];
+    // Step 2: Try to get phone from directory sites (gelbeseiten, dasoertliche, etc.)
+    // These are reliable sources even if we don't show them as the company website
+    const directoryUrls = allContacts.websites.filter(url =>
+      url.includes('gelbeseiten') ||
+      url.includes('dasoertliche') ||
+      url.includes('telefonbuch') ||
+      url.includes('cylex')
+    );
+
+    // Also try direct directory search if no directory URLs found
+    if (directoryUrls.length === 0) {
+      const companyName = company.split(/\s+/).slice(0, 2).join(' '); // First 2 words
+      const city = (location || '').replace(/\d+/g, '').trim(); // Remove PLZ
+
+      // Try Gelbe Seiten search
+      const gsSearchUrl = `https://www.gelbeseiten.de/suche/${encodeURIComponent(companyName)}/${encodeURIComponent(city)}`;
+      directoryUrls.push(gsSearchUrl);
+    }
+
+    for (const dirUrl of directoryUrls.slice(0, 2)) {
+      if (allContacts.phones.length >= 3) break; // Enough phones found
+      try {
+        console.log('Fetching directory for phone:', dirUrl);
+        const dirResponse = await axios.get(dirUrl, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+          timeout: 8000
+        });
+        const dirContacts = extractContactInfoFromHTML(dirResponse.data);
+        allContacts.phones.push(...dirContacts.phones);
+
+        // Also try to extract from specific patterns in Gelbe Seiten
+        const $ = cheerio.load(dirResponse.data);
+        $('a[href^="tel:"]').each((_, el) => {
+          const phone = $(el).attr('href')?.replace('tel:', '').trim();
+          if (phone && phone.length >= 8) {
+            allContacts.phones.push(phone);
+          }
+        });
+      } catch (e) {
+        // Ignore errors
+      }
+    }
+
+    // Step 3: If we found a non-directory website, try to get more contact info from it
+    const nonDirectoryWebsite = allContacts.websites.find(url =>
+      !url.includes('gelbeseiten') &&
+      !url.includes('dasoertliche') &&
+      !url.includes('telefonbuch') &&
+      !url.includes('cylex')
+    );
+
+    if (nonDirectoryWebsite && (allContacts.phones.length === 0 || allContacts.emails.length === 0)) {
+      const websiteUrl = nonDirectoryWebsite;
       try {
         console.log('Fetching company website:', websiteUrl);
         const siteResponse = await axios.get(websiteUrl, {
@@ -1979,7 +2029,7 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       }
     }
 
-    // Step 3: Fallback - try direct URL guessing
+    // Step 4: Fallback - try direct URL guessing
     if (allContacts.phones.length === 0 && allContacts.emails.length === 0) {
       // Extract just the main company name (first word or before GmbH/AG etc)
       const companyParts = company.split(/\s+/);
@@ -2090,15 +2140,36 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       }
     }
 
-    // IMPORTANT: Only return phone number if we found a REAL company website
-    // The website must contain the company name - this prevents false positives
+    // Count phone number occurrences to find the most reliable one
+    const phoneCount = new Map<string, number>();
+    for (const phone of allContacts.phones) {
+      const normalized = normalizePhone(phone);
+      phoneCount.set(normalized, (phoneCount.get(normalized) || 0) + 1);
+    }
+
+    // Find the most common phone number (appears multiple times = more reliable)
+    let mostCommonPhone = '';
+    let maxCount = 0;
+    for (const [normalized, count] of phoneCount.entries()) {
+      if (count > maxCount) {
+        maxCount = count;
+        // Find original format
+        mostCommonPhone = allContacts.phones.find(p => normalizePhone(p) === normalized) || '';
+      }
+    }
+
+    // Decision logic:
+    // 1. If we found a real website with company name → show both
+    // 2. If no website but phone appears 2+ times → show only phone (reliable)
+    // 3. Otherwise → show nothing
     const hasRealWebsite = firstValidWebsite !== '';
+    const hasReliablePhone = maxCount >= 2 && mostCommonPhone !== '';
 
     res.json({
       success: true,
       query: searchQuery,
       contacts: {
-        phone: hasRealWebsite ? (allContacts.phones[0] || null) : null,
+        phone: hasRealWebsite ? (allContacts.phones[0] || null) : (hasReliablePhone ? mostCommonPhone : null),
         website: hasRealWebsite ? firstValidWebsite : null
       }
     });
