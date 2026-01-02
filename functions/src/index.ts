@@ -2040,20 +2040,46 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       'firmania', 'northdata', 'unternehmensverzeichnis', 'firmenabc', 'kompany',
       'dnb.com', 'creditreform', 'hoppenstedt', 'firmeneintrag', 'stadtbranchenbuch',
       'telefonbuch', 'dastelefonbuch', 'dasoertliche', 'oertliche', 'tel.search',
-      'jobs-in-', 'vrm-jobs', 'arbeitsagentur', 'jobboerse', 'stellenanzeigen'
+      'jobs-in-', 'vrm-jobs', 'arbeitsagentur', 'jobboerse', 'stellenanzeigen',
+      'firmenkataloge', 'defirmenkataloge', 'marburg.de', 'regional', 'local',
+      'verzeichnis', 'katalog', 'register', 'liste', 'finder', 'suche',
+      'infobel', 'kompass.com', 'europages', 'yalwa', 'tupalo', 'foursquare',
+      '2-get', 'nochoffen', 'opening', 'oeffnung', 'bewertung', 'review',
+      'wiki', 'facebook.com', 'instagram.com', 'twitter.com', 'tiktok.com'
     ];
+
+    // Extract company name parts for matching (first word, without GmbH etc)
+    const companyNameParts = company.toLowerCase()
+      .replace(/gmbh|ag|kg|ohg|ug|gbr|e\.v\.|mbh|co\.|&|,/gi, '')
+      .split(/\s+/)
+      .filter(part => part.length > 2);
 
     let firstValidWebsite = '';
     for (const url of [...new Set(allContacts.websites)]) {
-      const isDirectory = directoryDomains.some(domain => url.toLowerCase().includes(domain));
-      if (!isDirectory) {
+      const urlLower = url.toLowerCase();
+      const isDirectory = directoryDomains.some(domain => urlLower.includes(domain));
+
+      // Extract just the domain (not path) for company name matching
+      let domain = '';
+      try {
+        domain = new URL(url).hostname.toLowerCase();
+      } catch (e) {
+        domain = urlLower;
+      }
+
+      // Check if DOMAIN contains any part of the company name (e.g. "nagel" in "nagel-galabau.info")
+      // This prevents matching URLs like "directory.com/listing/companyname"
+      const domainContainsCompanyName = companyNameParts.some(part => domain.includes(part));
+
+      // Only accept if NOT a directory AND domain contains company name
+      if (!isDirectory && domainContainsCompanyName) {
         firstValidWebsite = url;
         break;
       }
     }
 
     // IMPORTANT: Only return phone number if we found a REAL company website
-    // This prevents returning random phone numbers from directory sites
+    // The website must contain the company name - this prevents false positives
     const hasRealWebsite = firstValidWebsite !== '';
 
     res.json({
