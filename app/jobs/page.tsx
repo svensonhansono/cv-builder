@@ -1110,69 +1110,46 @@ export default function JobsPage() {
                               {loadingAutoContacts && (
                                 <div className="flex items-center gap-2 text-sm text-foreground/60">
                                   <Loader2 className="w-4 h-4 animate-spin" />
-                                  <span>Suche nach Kontaktdaten via Google...</span>
+                                  <span>Suche nach Kontaktdaten...</span>
                                 </div>
                               )}
 
                               {autoFoundContacts && (
                                 <div className="glass rounded-lg p-4 border border-blue-500/30 space-y-3">
-                                  {autoFoundContacts.phones?.length > 0 && (
+                                  {autoFoundContacts.phone && (
                                     <div>
                                       <p className="text-xs text-foreground/50 uppercase tracking-wider mb-2">Telefon</p>
-                                      {autoFoundContacts.phones.map((phone: string, idx: number) => (
-                                        <a
-                                          key={idx}
-                                          href={`tel:${phone}`}
-                                          className="block text-green-400 hover:underline mb-1"
-                                        >
-                                          {phone}
-                                        </a>
-                                      ))}
+                                      <a
+                                        href={`tel:${autoFoundContacts.phone}`}
+                                        className="text-green-400 hover:underline text-lg font-semibold"
+                                      >
+                                        {autoFoundContacts.phone}
+                                      </a>
                                     </div>
                                   )}
 
-                                  {autoFoundContacts.emails?.length > 0 && (
-                                    <div>
-                                      <p className="text-xs text-foreground/50 uppercase tracking-wider mb-2">E-Mail</p>
-                                      {autoFoundContacts.emails.map((email: string, idx: number) => (
-                                        <a
-                                          key={idx}
-                                          href={`mailto:${email}`}
-                                          className="block text-green-400 hover:underline mb-1"
-                                        >
-                                          {email}
-                                        </a>
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {autoFoundContacts.websites?.length > 0 && (
+                                  {autoFoundContacts.website && (
                                     <div>
                                       <p className="text-xs text-foreground/50 uppercase tracking-wider mb-2">Website</p>
-                                      {autoFoundContacts.websites.map((website: string, idx: number) => (
-                                        <a
-                                          key={idx}
-                                          href={website}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="block text-blue-400 hover:underline mb-1"
-                                        >
-                                          {website}
-                                        </a>
-                                      ))}
+                                      <a
+                                        href={autoFoundContacts.website}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-400 hover:underline"
+                                      >
+                                        {autoFoundContacts.website}
+                                      </a>
                                     </div>
                                   )}
 
-                                  {(!autoFoundContacts.phones || autoFoundContacts.phones.length === 0) &&
-                                   (!autoFoundContacts.emails || autoFoundContacts.emails.length === 0) &&
-                                   (!autoFoundContacts.websites || autoFoundContacts.websites.length === 0) && (
+                                  {!autoFoundContacts.phone && !autoFoundContacts.website && (
                                     <p className="text-sm text-foreground/50">
                                       Keine Kontaktdaten gefunden.
                                     </p>
                                   )}
 
                                   <p className="text-xs text-foreground/40 mt-2">
-                                    Automatisch via Google gefunden
+                                    Automatisch gefunden
                                   </p>
                                 </div>
                               )}

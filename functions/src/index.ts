@@ -2011,64 +2011,53 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       }
     }
 
-    // Filter and deduplicate
-    // Only keep real emails (must have @ and proper domain)
-    allContacts.emails = [...new Set(allContacts.emails)]
-      .filter(email =>
-        email.includes('@') &&
-        !email.includes('.png') &&
-        !email.includes('.jpg') &&
-        !email.includes('.gif') &&
-        !email.includes('.ico') &&
-        !email.includes('favicon') &&
-        !email.includes('google') &&
-        !email.includes('facebook') &&
-        email.match(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/)
-      )
-      .slice(0, 3);
+    // SIMPLIFIED OUTPUT: Only 1 phone, no emails, 1 website
 
-    // Normalize and deduplicate phone numbers (remove duplicates with different formatting)
+    // No emails - too unreliable
+    allContacts.emails = [];
+
+    // Only keep the FIRST valid phone number
     const normalizePhone = (phone: string) => phone.replace(/[\s\-\/\(\)]/g, '');
-    const seenPhones = new Set<string>();
-    allContacts.phones = allContacts.phones
-      .filter(phone => {
-        const normalized = normalizePhone(phone);
-        // Must be at least 10 digits for a valid German phone number with area code
-        // And must start with 0 or + (valid German format)
-        if (seenPhones.has(normalized) || normalized.length < 10) return false;
-        if (!normalized.startsWith('0') && !normalized.startsWith('+')) return false;
-        seenPhones.add(normalized);
-        return true;
-      })
-      .slice(0, 3);
+    let firstValidPhone = '';
+    for (const phone of allContacts.phones) {
+      const normalized = normalizePhone(phone);
+      // Must be at least 10 digits for a valid German phone number with area code
+      // And must start with 0 or + (valid German format)
+      if (normalized.length >= 10 && (normalized.startsWith('0') || normalized.startsWith('+'))) {
+        firstValidPhone = phone;
+        break;
+      }
+    }
+    allContacts.phones = firstValidPhone ? [firstValidPhone] : [];
 
-    // Filter websites - only keep main company sites, not directories
-    allContacts.websites = [...new Set(allContacts.websites)]
-      .filter(url =>
-        !url.includes('gelbeseiten') &&
-        !url.includes('11880') &&
-        !url.includes('cylex') &&
-        !url.includes('yelp') &&
-        !url.includes('golocal') &&
-        !url.includes('meinestadt') &&
-        !url.includes('bizdb') &&
-        !url.includes('oeffnungszeitenbuch') &&
-        !url.includes('aktivbruecke') &&
-        !url.includes('branchen') &&
-        !url.includes('firmenfinden') &&
-        !url.includes('wlw.de') &&
-        !url.includes('firmenwissen') &&
-        !url.includes('handwerk.de') &&
-        !url.includes('klicktel') &&
-        !url.includes('hotfrog') &&
-        !url.includes('branchenbuch')
-      )
-      .slice(0, 3);
+    // Only keep the FIRST valid company website (not directories)
+    const directoryDomains = [
+      'gelbeseiten', '11880', 'cylex', 'yelp', 'golocal', 'meinestadt',
+      'bizdb', 'oeffnungszeitenbuch', 'aktivbruecke', 'branchen', 'firmenfinden',
+      'wlw.de', 'firmenwissen', 'handwerk.de', 'klicktel', 'hotfrog', 'branchenbuch',
+      'kununu', 'xing', 'linkedin', 'indeed', 'stepstone', 'monster', 'gartenbau.org',
+      'haendlerschutz', 'trustpilot', 'provenexpert', 'google', 'bing', 'yahoo',
+      'firmania', 'northdata', 'unternehmensverzeichnis', 'firmenabc', 'kompany',
+      'dnb.com', 'creditreform', 'hoppenstedt', 'firmeneintrag', 'stadtbranchenbuch'
+    ];
+
+    let firstValidWebsite = '';
+    for (const url of [...new Set(allContacts.websites)]) {
+      const isDirectory = directoryDomains.some(domain => url.toLowerCase().includes(domain));
+      if (!isDirectory) {
+        firstValidWebsite = url;
+        break;
+      }
+    }
+    allContacts.websites = firstValidWebsite ? [firstValidWebsite] : [];
 
     res.json({
       success: true,
       query: searchQuery,
-      contacts: allContacts
+      contacts: {
+        phone: allContacts.phones[0] || null,
+        website: allContacts.websites[0] || null
+      }
     });
 
   } catch (error: any) {
