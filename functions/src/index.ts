@@ -2048,11 +2048,23 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       'wiki', 'facebook.com', 'instagram.com', 'twitter.com', 'tiktok.com'
     ];
 
+    // Helper to normalize umlauts (ü→ue, ä→ae, ö→oe, ß→ss)
+    const normalizeUmlauts = (str: string) => str
+      .replace(/ü/g, 'ue').replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ß/g, 'ss')
+      .replace(/Ü/g, 'Ue').replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe');
+
     // Extract company name parts for matching (first word, without GmbH etc)
-    const companyNameParts = company.toLowerCase()
+    const companyNamePartsRaw = company.toLowerCase()
       .replace(/gmbh|ag|kg|ohg|ug|gbr|e\.v\.|mbh|co\.|&|,/gi, '')
       .split(/\s+/)
       .filter(part => part.length > 2);
+
+    // Create both umlaut and non-umlaut versions for matching
+    const companyNameParts: string[] = [];
+    for (const part of companyNamePartsRaw) {
+      companyNameParts.push(part); // Original (with umlauts)
+      companyNameParts.push(normalizeUmlauts(part)); // Normalized (ue, ae, oe)
+    }
 
     let firstValidWebsite = '';
     for (const url of [...new Set(allContacts.websites)]) {
