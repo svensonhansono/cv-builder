@@ -1149,7 +1149,7 @@ export default function JobsPage() {
                                       </p>
                                       <div className="flex flex-wrap gap-2">
                                         <a
-                                          href={`https://www.google.com/maps/search/${encodeURIComponent(selectedJob.arbeitgeber + ' ' + selectedJob.arbeitsort)}`}
+                                          href={`https://www.google.com/maps/search/${encodeURIComponent((selectedJob.arbeitgeber || '') + ' ' + (typeof selectedJob.arbeitsort === 'string' ? selectedJob.arbeitsort : selectedJob.arbeitsort?.ort || ''))}`}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="inline-flex items-center gap-2 px-3 py-2 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 rounded-lg text-blue-300 text-sm transition-colors"
@@ -1160,7 +1160,7 @@ export default function JobsPage() {
                                           Google Maps
                                         </a>
                                         <a
-                                          href={`https://www.gelbeseiten.de/suche/${encodeURIComponent(selectedJob.arbeitgeber)}/${encodeURIComponent(selectedJob.arbeitsort?.split(',')[0] || '')}`}
+                                          href={`https://www.gelbeseiten.de/suche/${encodeURIComponent(selectedJob.arbeitgeber || '')}/${encodeURIComponent(typeof selectedJob.arbeitsort === 'string' ? selectedJob.arbeitsort.split(',')[0] : selectedJob.arbeitsort?.ort || '')}`}
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 rounded-lg text-yellow-300 text-sm transition-colors"
