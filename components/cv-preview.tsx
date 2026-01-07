@@ -19,13 +19,25 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Adjustable margins in cm
-  const [margins, setMargins] = useState({
+  // Default margins in cm - use saved values from data or defaults
+  const defaultMargins = {
     top: 1.5,
     bottom: 1.5,
     left: 2.5,
     right: 2.0
-  });
+  };
+
+  // Use margins from data if available, otherwise use defaults
+  const margins = data.margins || defaultMargins;
+
+  // Function to update margins and save to data
+  const setMargins = (updater: (prev: typeof margins) => typeof margins) => {
+    const newMargins = updater(margins);
+    onChange({
+      ...data,
+      margins: newMargins
+    });
+  };
 
   // Calculate page breaks based on current margins
   const contentHeight = 29.7 - margins.top - margins.bottom;
@@ -226,8 +238,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="p-4 sm:p-6 lg:p-8">
+    <div className="h-full overflow-y-auto overflow-x-hidden">
+      <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -280,7 +292,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
               </Button>
             </div>
 
-            {/* CV Container */}
+            {/* CV Container Wrapper - scales on mobile */}
+            <div className="cv-scale-wrapper origin-top">
             <div
               ref={cvContainerRef}
               className="rounded-lg sm:rounded-xl lg:rounded-2xl glass shadow-2xl shadow-purple-500/20 border border-white/10 relative"
@@ -354,6 +367,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                 </div>
               </div>
 
+
               {/* Content area */}
               <div
                 className="absolute"
@@ -389,7 +403,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           left: `-${margins.left}cm`,
                           right: `-${margins.right}cm`,
                           height: `${contentHeight}cm`,
-                          background: '#0f172a',
+                          background: '#161b2e',
                           zIndex: 50,
                         }}
                       />
@@ -869,6 +883,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   )}
                 </div>
               </div>
+            </div>
             </div>
           </motion.div>
         </div>

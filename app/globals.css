@@ -124,3 +124,35 @@
   caret-color: #c084fc; /* Hellerer Lila Cursor beim Fokus */
   outline: none;
 }
+
+/* CV Preview scaling for mobile devices */
+.cv-scale-wrapper {
+  transform: scale(0.38);
+  transform-origin: top center;
+  height: calc(297mm * 0.38);
+  margin-bottom: calc(-297mm * 0.62);
+}
+
+@media (min-width: 640px) {
+  .cv-scale-wrapper {
+    transform: scale(0.5);
+    height: calc(297mm * 0.5);
+    margin-bottom: calc(-297mm * 0.5);
+  }
+}
+
+@media (min-width: 768px) {
+  .cv-scale-wrapper {
+    transform: scale(0.65);
+    height: calc(297mm * 0.65);
+    margin-bottom: calc(-297mm * 0.35);
+  }
+}
+
+@media (min-width: 1024px) {
+  .cv-scale-wrapper {
+    transform: scale(1);
+    height: auto;
+    margin-bottom: 0;
+  }
+}

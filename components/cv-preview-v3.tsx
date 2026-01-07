@@ -269,7 +269,8 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
             </Button>
           </div>
 
-          {/* CV Container */}
+          {/* CV Container Wrapper - scales on mobile */}
+          <div className="cv-scale-wrapper origin-top">
           <div
             ref={cvContainerRef}
             className="rounded-lg sm:rounded-xl lg:rounded-2xl glass shadow-2xl shadow-purple-500/20 border border-white/10 relative"
@@ -739,6 +740,7 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
                 </div>
               )}
             </div>
+          </div>
           </div>
             </div>
           </div>
