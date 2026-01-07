@@ -139,7 +139,7 @@ export const jobCategories: JobCategory[] = [
   },
   {
     id: "handel",
-    name: "Handel",
+    name: "Handel, Lebensmittel, Verkauf",
     icon: "🛒",
     subcategories: [
       "Verkauf (ohne Produktspezialisierung)",
@@ -152,7 +152,7 @@ export const jobCategories: JobCategory[] = [
   },
   {
     id: "tourismus",
-    name: "Tourismus, Gastgewerbe und Lebensmittel",
+    name: "Tourismus, Gastgewerbe, Lebensmittel",
     icon: "🍽️",
     subcategories: [
       "Speisenzubereitung",
@@ -165,7 +165,7 @@ export const jobCategories: JobCategory[] = [
   },
   {
     id: "gesundheit",
-    name: "Gesundheit",
+    name: "Gesundheit, Tiermedizin",
     icon: "🏥",
     subcategories: [
       "Human- und Zahnmedizin",
@@ -253,6 +253,15 @@ export const jobCategories: JobCategory[] = [
       "Kunsthandwerkliche Metallgestaltung",
       "Bühnen- und Kostümbildnerei, Requisite",
       "Musikinstrumentenbau"
+    ]
+  },
+  {
+    id: "steuer-immobilien",
+    name: "Steuerberatung, Immobilien",
+    icon: "🏠",
+    subcategories: [
+      "Steuerberatung",
+      "Immobilienwirtschaft und Facility-Management"
     ]
   }
 ];
