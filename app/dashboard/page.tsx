@@ -477,8 +477,8 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Version Switcher - 2 Rows */}
-              <div className="flex flex-col gap-2">
+              {/* Version Switcher - 2 Rows (Desktop only) */}
+              <div className="hidden xl:flex flex-col gap-2">
                 {/* Lebenslauf Row */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-foreground/70 whitespace-nowrap">Lebenslauf</span>

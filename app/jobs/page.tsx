@@ -746,22 +746,22 @@ export default function JobsPage() {
 
       {/* Header */}
       <header className="relative z-10 border-b border-white/10 bg-slate-950/50 backdrop-blur-xl">
-        <div className="w-[98%] max-w-none mx-auto px-4 py-4 lg:py-6">
+        <div className="w-full lg:w-[98%] max-w-none mx-auto px-3 lg:px-4 py-3 lg:py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 lg:gap-4">
               <Link href="/dashboard">
-                <Button variant="outline" size="sm" className="glass border-white/10">
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Zurück
+                <Button variant="outline" size="sm" className="glass border-white/10 px-2 lg:px-3">
+                  <ArrowLeft className="w-4 h-4 lg:mr-2" />
+                  <span className="hidden lg:inline">Zurück</span>
                 </Button>
               </Link>
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 shadow-lg shadow-green-500/30">
-                  <Briefcase className="w-6 h-6 text-white" />
+              <div className="flex items-center gap-2 lg:gap-3">
+                <div className="p-1.5 lg:p-2 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 shadow-lg shadow-green-500/30">
+                  <Briefcase className="w-5 h-5 lg:w-6 lg:h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold gradient-text">Stellensuche</h1>
-                  <p className="text-sm text-foreground/60">
+                  <h1 className="text-lg lg:text-2xl font-bold gradient-text">Stellensuche</h1>
+                  <p className="text-xs lg:text-sm text-foreground/60 hidden sm:block">
                     {totalResults > 0
                       ? `${totalResults.toLocaleString('de-DE')} Stellen gefunden`
                       : "Arbeitsagentur Jobbörse"}
@@ -774,15 +774,15 @@ export default function JobsPage() {
       </header>
 
       {/* Main Content - Two Column Layout */}
-      <div className="relative z-10 w-[98%] max-w-none mx-auto px-4 py-6 h-[calc(100vh-100px)]">
-        <div className="flex gap-6 h-full">
-          {/* Left Column - Search Form & Categories (Sticky) */}
-          <div className="w-[420px] flex-shrink-0 sticky top-6 self-start max-h-[calc(100vh-130px)] overflow-y-auto">
+      <div className="relative z-10 w-full lg:w-[98%] max-w-none mx-auto px-2 lg:px-4 py-3 lg:py-6 h-[calc(100vh-70px)] lg:h-[calc(100vh-100px)] overflow-y-auto lg:overflow-visible">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 h-full">
+          {/* Left Column - Search Form & Categories (Sticky on Desktop) */}
+          <div className="w-full lg:w-[420px] flex-shrink-0 lg:sticky lg:top-6 lg:self-start lg:max-h-[calc(100vh-130px)] lg:overflow-y-auto">
             {/* Search Form */}
             <div className="glass rounded-xl p-5 border border-purple-500/20 mb-4">
               <div className="space-y-4">
                 {/* Kategorien ODER Unterkategorien - ganz oben, feste Höhe */}
-                <div className="h-[395px]">
+                <div className="h-auto lg:h-[395px]">
                   <AnimatePresence mode="wait">
                     {!clickedCategory ? (
                       <motion.div
@@ -790,7 +790,7 @@ export default function JobsPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="grid grid-cols-4 gap-2 h-[380px] content-start"
+                        className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 lg:h-[380px] content-start"
                       >
                       {jobCategories.slice(0, 16).map((category, index) => {
                         const hasSelectedSubcategory = category.subcategories.some(sub =>
@@ -830,7 +830,7 @@ export default function JobsPage() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="glass rounded-lg p-2 border border-purple-500/30 bg-slate-900/95 backdrop-blur-xl h-[380px] flex flex-col"
+                      className="glass rounded-lg p-2 border border-purple-500/30 bg-slate-900/95 backdrop-blur-xl h-auto max-h-[300px] lg:h-[380px] flex flex-col"
                     >
                       <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-white/10 flex-shrink-0">
                         <div className="flex items-center gap-1.5">
@@ -970,7 +970,7 @@ export default function JobsPage() {
           </div>
 
           {/* Right Column - Search Results */}
-          <div className="flex-1 flex flex-col max-h-[calc(100vh-130px)]">
+          <div className="flex-1 flex flex-col lg:max-h-[calc(100vh-130px)]">
             {/* Fixed Header - außerhalb des scrollbaren Bereichs */}
             {jobs.length > 0 && (
               <div className="pb-3 pt-1 flex-shrink-0">
@@ -1077,12 +1077,12 @@ export default function JobsPage() {
                               initial={{ opacity: 0, y: 20 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.3, delay: index * 0.03 }}
-                              className="glass rounded-xl p-5 border border-white/10 hover:border-green-500/30 transition-all hover:shadow-lg hover:shadow-green-500/10"
+                              className="glass rounded-xl p-3 lg:p-5 border border-white/10 hover:border-green-500/30 transition-all hover:shadow-lg hover:shadow-green-500/10"
                             >
-                              <div className="flex items-start justify-between gap-4">
+                              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
                                 <div className="flex-1">
                                   <div className="mb-2">
-                                    <h3 className="text-lg font-semibold text-foreground inline">
+                                    <h3 className="text-base lg:text-lg font-semibold text-foreground inline">
                                       {searchTerm ? highlightSearchTerm(job.titel || 'Stellenangebot', searchTerm) : (job.titel || 'Stellenangebot')}
                                     </h3>
                                     {jobsWithContactInfo.has(job.refnr) && (
@@ -1092,7 +1092,7 @@ export default function JobsPage() {
                                     )}
                                   </div>
 
-                                  <div className="flex flex-wrap gap-4 text-sm text-foreground/70 mb-2">
+                                  <div className="flex flex-wrap gap-2 lg:gap-4 text-xs lg:text-sm text-foreground/70 mb-2">
                                     {job.arbeitgeber && (
                                       <div className="flex items-center gap-2">
                                         <Building2 className="w-4 h-4" />
@@ -1131,7 +1131,7 @@ export default function JobsPage() {
 
                                 <Button
                                   onClick={() => handleViewJobDetails(job)}
-                                  className="shrink-0 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                                  className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                                   size="sm"
                                 >
                                   <ChevronRight className="w-4 h-4 mr-1" />
@@ -1226,9 +1226,9 @@ export default function JobsPage() {
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               className="fixed top-0 right-0 h-full w-full md:w-[700px] lg:w-[900px] xl:w-[1000px] bg-slate-900 shadow-2xl z-[9999] overflow-y-auto"
             >
-              <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xl border-b border-white/10 p-6">
+              <div className="sticky top-0 z-10 bg-slate-900/95 backdrop-blur-xl border-b border-white/10 p-4 lg:p-6">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-2xl font-bold gradient-text">Stellendetails</h2>
+                  <h2 className="text-xl lg:text-2xl font-bold gradient-text">Stellendetails</h2>
                   <button
                     onClick={() => setSelectedJob(null)}
                     className="p-2 rounded-lg hover:bg-white/10 transition-colors"
@@ -1238,7 +1238,7 @@ export default function JobsPage() {
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
                 {/* Loading Indicator */}
                 {loadingDetails && (
                   <div className="flex items-center justify-center py-4">
@@ -1249,7 +1249,7 @@ export default function JobsPage() {
 
                 {/* Job Title */}
                 <div>
-                  <h3 className="text-3xl font-bold text-foreground mb-2">
+                  <h3 className="text-xl lg:text-3xl font-bold text-foreground mb-2">
                     {selectedJob.titel || 'Stellenangebot'}
                   </h3>
                 </div>
