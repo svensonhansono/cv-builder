@@ -130,7 +130,16 @@ export default function LoginPage() {
           ) : (
             <>
               {/* Login Form */}
-              {!resetSuccess && <form onSubmit={handleSubmit} className="space-y-4">
+              {!resetSuccess && <form
+                onSubmit={handleSubmit}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !loading) {
+                    e.preventDefault();
+                    handleSubmit(e as any);
+                  }
+                }}
+                className="space-y-4"
+              >
             <div className="space-y-2">
               <Label htmlFor="email">E-Mail</Label>
               <div className="relative">
@@ -143,6 +152,7 @@ export default function LoginPage() {
                   placeholder="deine@email.de"
                   className="pl-10"
                   required
+                  autoComplete="email"
                 />
               </div>
             </div>
@@ -168,6 +178,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   className="pl-10"
                   required
+                  autoComplete="current-password"
                 />
               </div>
             </div>

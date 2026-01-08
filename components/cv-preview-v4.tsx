@@ -27,8 +27,8 @@ export function CVPreviewV4({ data, onChange }: CVPreviewV4Props) {
   const [margins, setMargins] = useState({
     top: 1.5,
     bottom: 1.5,
-    left: 2.5,
-    right: 2.0
+    left: 1.5,
+    right: 1.5
   });
 
   // Calculate page breaks based on current margins
@@ -376,7 +376,7 @@ export function CVPreviewV4({ data, onChange }: CVPreviewV4Props) {
                       left: `-${margins.left}cm`,
                       right: `-${margins.right}cm`,
                       height: `${contentHeight}cm`,
-                      background: '#0f172a',
+                      background: '#161b2e',
                       zIndex: 50,
                     }}
                   />

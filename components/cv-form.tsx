@@ -338,27 +338,38 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   </div>
                 </div>
 
-                {/* Ort & Berufstitel */}
+                {/* Straße & PLZ/Ort */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="location">Ort</Label>
+                    <Label htmlFor="street">Straße & Hausnummer</Label>
                     <Input
-                      id="location"
-                      value={data.personalInfo.location}
-                      onChange={(e) => updatePersonalInfo("location", e.target.value)}
-                      placeholder="Berlin, Deutschland"
+                      id="street"
+                      value={data.personalInfo.street || ""}
+                      onChange={(e) => updatePersonalInfo("street", e.target.value)}
+                      placeholder="Musterstraße 123"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="title">Berufstitel</Label>
+                    <Label htmlFor="location">PLZ & Ort</Label>
                     <Input
-                      id="title"
-                      value={data.personalInfo.title}
-                      onChange={(e) => updatePersonalInfo("title", e.target.value)}
-                      placeholder="Full-Stack Developer"
+                      id="location"
+                      value={data.personalInfo.location}
+                      onChange={(e) => updatePersonalInfo("location", e.target.value)}
+                      placeholder="10115 Berlin"
                     />
                   </div>
+                </div>
+
+                {/* Berufstitel */}
+                <div className="space-y-2">
+                  <Label htmlFor="title">Berufstitel</Label>
+                  <Input
+                    id="title"
+                    value={data.personalInfo.title}
+                    onChange={(e) => updatePersonalInfo("title", e.target.value)}
+                    placeholder="Full-Stack Developer"
+                  />
                 </div>
 
                 {/* Zusätzliche persönliche Daten (für V2/V3) */}

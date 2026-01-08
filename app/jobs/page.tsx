@@ -343,6 +343,7 @@ export default function JobsPage() {
     setLoading(true);
     setCurrentPage(page);
     setViewMode("search");
+    setSortingJobs(false); // Reset bei neuer Suche
 
     try {
       console.log('🔍 Searching Arbeitsagentur API for jobs...');
@@ -593,6 +594,7 @@ export default function JobsPage() {
 
       // Im Hintergrund nach Kontaktdaten prüfen
       const contactInfoSet = new Set<string>();
+      setSortingJobs(true); // Zeige Ladeindikator
 
       const checkJobsForContactInfo = async () => {
         const batchSize = 10;
@@ -636,6 +638,7 @@ export default function JobsPage() {
         });
 
         setJobs(sortedJobs);
+        setSortingJobs(false); // Ladeindikator ausblenden
         console.log(`✅ Jobs sortiert: ${contactInfoSet.size} mit Kontaktdaten`);
       };
 
@@ -646,6 +649,7 @@ export default function JobsPage() {
       setJobs([]);
       setTotalResults(0);
       setLoading(false);
+      setSortingJobs(false);
     }
   };
 
@@ -976,11 +980,19 @@ export default function JobsPage() {
               <div className="pb-3 pt-1 flex-shrink-0">
                 {/* Results Header */}
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-foreground/60">
-                    {totalResults.toLocaleString('de-DE')} Stellenangebote gefunden
-                    {searchTerm && ` für "${searchTerm}"`}
-                    {location && ` in ${location}`}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <p className="text-foreground/60">
+                      {totalResults.toLocaleString('de-DE')} Stellenangebote gefunden
+                      {searchTerm && ` für "${searchTerm}"`}
+                      {location && ` in ${location}`}
+                    </p>
+                    {sortingJobs && (
+                      <span className="flex items-center gap-1.5 text-xs text-purple-400 animate-pulse">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Kontaktdaten werden geladen...
+                      </span>
+                    )}
+                  </div>
                   <p className="text-sm text-foreground/50">
                     Seite {currentPage} von {totalPages}
                   </p>

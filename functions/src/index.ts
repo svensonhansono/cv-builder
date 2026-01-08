@@ -414,6 +414,92 @@ export const customerPortal = functions.https.onRequest(async (req, res) => {
 });
 
 // ======================
+// Create Checkout Session (for existing users upgrading)
+// ======================
+export const createCheckoutSession = functions.https.onRequest(async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).send('');
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { userId, email } = req.body;
+
+    if (!userId || !email) {
+      res.status(400).json({ error: 'User ID und Email sind erforderlich' });
+      return;
+    }
+
+    console.log(`Creating checkout session for existing user: ${userId}`);
+
+    // Check if user already has a Stripe customer
+    const userDoc = await db.collection('users').doc(userId).get();
+    let customerId = userDoc.exists ? userDoc.data()?.subscription?.customerId : null;
+
+    // If no customer exists, create one
+    if (!customerId) {
+      // Check if email already has a customer
+      const existingCustomers = await stripe.customers.list({
+        email: email,
+        limit: 1,
+      });
+
+      if (existingCustomers.data.length > 0) {
+        customerId = existingCustomers.data[0].id;
+      } else {
+        const customer = await stripe.customers.create({
+          email: email,
+          metadata: {
+            firebaseUserId: userId,
+          },
+        });
+        customerId = customer.id;
+      }
+    }
+
+    // Create Stripe checkout session (no trial for existing users upgrading)
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card', 'sepa_debit'],
+      mode: 'subscription',
+      line_items: [{
+        price: getConfig().price_id,
+        quantity: 1,
+      }],
+      subscription_data: {
+        metadata: {
+          userId: userId,
+          isNewRegistration: 'false',
+        },
+      },
+      success_url: `${req.headers.origin}/dashboard?upgraded=true`,
+      cancel_url: `${req.headers.origin}/upgrade?canceled=true`,
+      metadata: {
+        userId: userId,
+        isNewRegistration: 'false',
+      },
+      client_reference_id: userId,
+    });
+
+    console.log(`✅ Checkout session created for user: ${userId}, session: ${session.id}`);
+
+    res.json({ sessionId: session.id, url: session.url });
+  } catch (error: any) {
+    console.error('Create checkout session error:', error);
+    res.status(500).json({ error: error.message || 'Fehler beim Erstellen der Checkout-Session' });
+  }
+});
+
+// ======================
 // Create Setup Intent (for embedded payment form)
 // ======================
 export const createSetupIntent = functions.https.onRequest(async (req, res) => {
@@ -795,10 +881,13 @@ export const searchJobs = functions.https.onRequest(async (req, res) => {
     const was = req.query.was as string || '';
     const wo = req.query.wo as string || '';
     const umkreis = req.query.umkreis as string || '';
+    const bundesland = req.query.bundesland as string || '';
     const page = parseInt(req.query.page as string || '1');
     const size = parseInt(req.query.size as string || '50');
+    const homeoffice = req.query.homeoffice as string || '';
+    const veroeffentlichtseit = req.query.veroeffentlichtseit as string || '';
 
-    console.log('🔍 Searching jobs via APP API (no CAPTCHA):', { was, wo, umkreis, page, size });
+    console.log('🔍 Searching jobs via APP API (no CAPTCHA):', { was, wo, umkreis, bundesland, page, size, homeoffice, veroeffentlichtseit });
 
     const response = await axios.get(
       'https://rest.arbeitsagentur.de/jobboerse/jobsuche-service/pc/v4/app/jobs',
@@ -811,6 +900,11 @@ export const searchJobs = functions.https.onRequest(async (req, res) => {
           ...(was && { was }),
           ...(wo && { wo }),
           ...(umkreis && { umkreis }),
+          ...(bundesland && { bundesland }),
+          // Homeoffice/Remote filter - Arbeitsagentur uses 'bepilotetarbeitsform' or 'arbeitsort.remote'
+          ...(homeoffice === 'true' && { 'bepilotetarbeitsform': 1 }),
+          // Veröffentlicht seit X Tagen
+          ...(veroeffentlichtseit && { veroeffentlichtseit }),
           angebotsart: 1,
           page: page.toString(),
           size: size.toString()
@@ -1858,7 +1952,7 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       return;
     }
 
-    console.log('🔍 Searching Google for company contact:', company, location);
+    console.log('🔍 Searching Google Places for company contact:', company, location);
 
     let allContacts = {
       emails: [] as string[],
@@ -1867,7 +1961,72 @@ export const searchCompanyContact = functions.https.onRequest(async (req, res) =
       address: '' as string
     };
 
-    // Step 1: Try DuckDuckGo HTML search (doesn't block like Google)
+    // Step 1: Try Google Places API (most reliable)
+    const googleApiKey = functions.config().google?.places_api_key;
+
+    if (googleApiKey) {
+      try {
+        const searchQuery = `${company} ${location || ''}`.trim();
+
+        // First: Find Place from Text
+        const findPlaceUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(searchQuery)}&inputtype=textquery&fields=place_id,name,formatted_address&key=${googleApiKey}`;
+
+        const findResponse = await axios.get(findPlaceUrl, { timeout: 10000 });
+        console.log('Google Places Find response:', findResponse.data.status);
+
+        if (findResponse.data.status === 'OK' && findResponse.data.candidates?.length > 0) {
+          const placeId = findResponse.data.candidates[0].place_id;
+
+          // Second: Get Place Details (phone, website)
+          const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=formatted_phone_number,international_phone_number,website,url,name,formatted_address&key=${googleApiKey}`;
+
+          const detailsResponse = await axios.get(detailsUrl, { timeout: 10000 });
+          console.log('Google Places Details response:', detailsResponse.data.status);
+
+          if (detailsResponse.data.status === 'OK' && detailsResponse.data.result) {
+            const result = detailsResponse.data.result;
+
+            if (result.formatted_phone_number) {
+              allContacts.phones.push(result.formatted_phone_number);
+            }
+            if (result.international_phone_number) {
+              allContacts.phones.push(result.international_phone_number);
+            }
+            if (result.website) {
+              allContacts.websites.push(result.website);
+            }
+            if (result.formatted_address) {
+              allContacts.address = result.formatted_address;
+            }
+
+            console.log('✅ Google Places found:', {
+              phone: result.formatted_phone_number,
+              website: result.website,
+              address: result.formatted_address
+            });
+          }
+        }
+      } catch (googleErr: any) {
+        console.log('Google Places API error:', googleErr.message);
+      }
+    }
+
+    // If Google Places found data, return it directly
+    if (allContacts.phones.length > 0 || allContacts.websites.length > 0) {
+      res.json({
+        success: true,
+        query: `${company} ${location || ''}`.trim(),
+        source: 'google_places',
+        contacts: {
+          phone: allContacts.phones[0] || null,
+          website: allContacts.websites[0] || null,
+          address: allContacts.address || null
+        }
+      });
+      return;
+    }
+
+    // Step 2 (Fallback): Try DuckDuckGo HTML search
     const searchQuery = `${company} ${location || ''}`.trim();
     const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery + ' kontakt telefon')}`;
 

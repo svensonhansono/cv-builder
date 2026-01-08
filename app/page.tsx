@@ -109,7 +109,7 @@ export default function LandingPage() {
           {/* Bottom Bar */}
           <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-foreground/50">
-              © 2024 Lebenslauf-24.de. Alle Rechte vorbehalten.
+              © 2025 Lebenslauf-24.de. Alle Rechte vorbehalten.
             </p>
 
             {/* Social Links */}

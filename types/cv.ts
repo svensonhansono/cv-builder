@@ -3,6 +3,7 @@ export interface PersonalInfo {
   lastName: string;
   email: string;
   phone: string;
+  street?: string;
   location: string;
   title: string;
   summary: string;
@@ -11,6 +12,13 @@ export interface PersonalInfo {
   birthPlace?: string;
   nationality?: string;
   maritalStatus?: string;
+}
+
+export interface CVMargins {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 }
 
 export interface Experience {
@@ -77,6 +85,7 @@ export interface CVData {
   signatureImageUrl: string;
   showSignature: boolean;
   coverLetter: CoverLetter;
+  margins?: CVMargins;
 }
 
 export type SubscriptionTier = "free" | "premium";

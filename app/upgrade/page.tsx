@@ -27,8 +27,8 @@ export default function UpgradePage() {
     setError(null);
 
     try {
-      // Create checkout session
-      const response = await fetch("/api/stripe/checkout", {
+      // Create checkout session via Firebase Function
+      const response = await fetch("https://us-central1-lebenslauf-24.cloudfunctions.net/createCheckoutSession", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,11 +68,92 @@ export default function UpgradePage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-4">
-        <div className="text-center text-white">
-          <p className="text-xl mb-4">Bitte melden Sie sich an</p>
-          <Button onClick={() => router.push("/")} variant="outline">
-            Zur Anmeldung
-          </Button>
+        <div className="max-w-4xl w-full">
+          <div className="text-center mb-12">
+            <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Crown className="w-10 h-10 text-white" />
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              Upgrade auf Premium
+            </h1>
+            <p className="text-xl text-white/70">
+              Erstelle jetzt ein Konto und erhalte Zugriff auf alle Funktionen
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            {/* Free Plan */}
+            <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+              <h3 className="text-2xl font-bold text-white mb-2">Free</h3>
+              <div className="text-4xl font-bold text-white mb-6">
+                0€<span className="text-lg text-white/60">/Monat</span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start gap-3 text-white/80">
+                  <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>1 Lebenslauf-Vorlage</span>
+                </li>
+                <li className="flex items-start gap-3 text-white/80">
+                  <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>1 Anschreiben-Vorlage</span>
+                </li>
+                <li className="flex items-start gap-3 text-white/80">
+                  <Check className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <span>PDF-Export (Basic)</span>
+                </li>
+              </ul>
+              <Button
+                onClick={() => router.push("/register")}
+                variant="outline"
+                className="w-full border-white/30 text-white hover:bg-white/10"
+              >
+                Kostenlos starten
+              </Button>
+            </div>
+
+            {/* Premium Plan */}
+            <div className="bg-gradient-to-br from-yellow-400/20 to-yellow-600/20 backdrop-blur-lg rounded-2xl p-8 border-2 border-yellow-400/50 relative overflow-hidden">
+              <div className="absolute top-4 right-4">
+                <Crown className="w-8 h-8 text-yellow-400" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Premium</h3>
+              <div className="text-4xl font-bold text-white mb-6">
+                1,99€<span className="text-lg text-white/60">/Monat</span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start gap-3 text-white">
+                  <Check className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <span className="font-semibold">Alle 7 Lebenslauf-Vorlagen</span>
+                </li>
+                <li className="flex items-start gap-3 text-white">
+                  <Check className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <span className="font-semibold">Alle 7 Anschreiben-Vorlagen</span>
+                </li>
+                <li className="flex items-start gap-3 text-white">
+                  <Check className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <span className="font-semibold">Unbegrenzter PDF-Export</span>
+                </li>
+                <li className="flex items-start gap-3 text-white">
+                  <Check className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <span className="font-semibold">Jederzeit kündbar</span>
+                </li>
+              </ul>
+              <Button
+                onClick={() => router.push("/register")}
+                className="w-full bg-gradient-to-r from-yellow-400 to-yellow-600 hover:from-yellow-500 hover:to-yellow-700 text-black font-bold py-6 text-lg"
+              >
+                <Crown className="w-5 h-5 mr-2" />
+                Jetzt registrieren
+              </Button>
+            </div>
+          </div>
+
+          <div className="text-center">
+            <p className="text-white/60 mb-4">Bereits registriert?</p>
+            <Button onClick={() => router.push("/login")} variant="outline" className="border-white/30 text-white hover:bg-white/10">
+              Jetzt anmelden
+            </Button>
+          </div>
         </div>
       </div>
     );
