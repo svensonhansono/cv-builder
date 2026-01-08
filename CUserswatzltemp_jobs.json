@@ -1,0 +1,203 @@
+{
+  "stellenangebote" : [ {
+    "beruf" : "Helfer/in - Landwirtschaft",
+    "titel" : "Lagermitarbeiter (m/w/d) Quereinsteiger",
+    "refnr" : "14385-610-2494368-25-S",
+    "arbeitsort" : {
+      "plz" : "35315",
+      "ort" : "Homberg (Ohm)",
+      "strasse" : "null",
+      "region" : "Hessen",
+      "land" : "Deutschland",
+      "koordinaten" : {
+        "lat" : 50.727790406001,
+        "lon" : 9.002208279
+      },
+      "entfernung" : "20"
+    },
+    "arbeitgeber" : "ARWA Personaldienstleistungen GmbH",
+    "aktuelleVeroeffentlichungsdatum" : "2025-12-17",
+    "modifikationsTimestamp" : "2025-12-17T17:52:34.144",
+    "eintrittsdatum" : "2025-12-22",
+    "kundennummerHash" : "TDxP2CuRcRSAmQsfLNoh1Nk0qf83Y9sAPHItK6Hjce8="
+  }, {
+    "beruf" : "Helfer/in - Landwirtschaft",
+    "titel" : "Stallhelfer (m/w/d) im Bereich Pferde",
+    "refnr" : "10000-1203204888-S",
+    "arbeitsort" : {
+      "plz" : "35066",
+      "ort" : "Frankenberg (Eder)",
+      "strasse" : "Freidweg 9a",
+      "region" : "Hessen",
+      "land" : "Deutschland",
+      "koordinaten" : {
+        "lat" : 51.070816,
+        "lon" : 8.8611912
+      },
+      "entfernung" : "23"
+    },
+    "arbeitgeber" : "Aileen Margo Nau",
+    "aktuelleVeroeffentlichungsdatum" : "2025-07-23",
+    "modifikationsTimestamp" : "2025-12-12T10:30:20.88",
+    "eintrittsdatum" : "2025-12-12",
+    "kundennummerHash" : "44lFRI7YfSoz4nGPbuL9DB1aU-kmomtgrUDFdGJAZpA="
+  }, {
+    "beruf" : "Helfer/in - Landwirtschaft",
+    "titel" : "Helfer (m/w/d) für landwirtschaftlichen Betrieb gesucht",
+    "refnr" : "10000-1203602646-S",
+    "arbeitsort" : {
+      "plz" : "35066",
+      "ort" : "Frankenberg (Eder)",
+      "strasse" : "Rosenbergstr. 4",
+      "region" : "Hessen",
+      "land" : "Deutschland",
+      "koordinaten" : {
+        "lat" : 51.0565039,
+        "lon" : 8.8755534
+      },
+      "entfernung" : "21"
+    },
+    "arbeitgeber" : "Ochse GbR",
+    "aktuelleVeroeffentlichungsdatum" : "2025-09-01",
+    "modifikationsTimestamp" : "2025-12-15T13:44:52.801",
+    "eintrittsdatum" : "2025-12-15",
+    "kundennummerHash" : "KXyo4S5VPiNLa2WmkcpVcg_qwk4WefYQykJqIbEuPww="
+  } ],
+  "maxErgebnisse" : 5,
+  "page" : 1,
+  "size" : 3,
+  "woOutput" : {
+    "bereinigterOrt" : "35091",
+    "suchmodus" : "UMKREISSUCHE",
+    "koordinaten" : [ {
+      "lat" : 50.8682722,
+      "lon" : 8.8190598
+    } ]
+  },
+  "facetten" : {
+    "verguetung" : {
+      "counts" : {
+        "stunde" : 1
+      },
+      "maxCount" : 5
+    },
+    "befristung" : {
+      "counts" : {
+        "1" : 1,
+        "2" : 2,
+        "3" : 2
+      },
+      "maxCount" : 5
+    },
+    "externestellenboersen" : {
+      "counts" : {
+        "false" : 5
+      },
+      "maxCount" : 5
+    },
+    "behinderung" : {
+      "counts" : {
+        "false" : 1
+      },
+      "maxCount" : 5
+    },
+    "pav" : {
+      "counts" : {
+        "false" : 5
+      },
+      "maxCount" : 5
+    },
+    "berufsfeld" : {
+      "counts" : {
+        "Landwirtschaft" : 4,
+        "Verwaltung" : 1
+      },
+      "maxCount" : 5
+    },
+    "arbeitsort" : {
+      "counts" : {
+        "Homberg (Ohm)" : 1,
+        "Marburg" : 1,
+        "Frankenberg (Eder)" : 2,
+        "Kirchhain" : 1
+      },
+      "maxCount" : 5
+    },
+    "veroeffentlichtseit" : {
+      "counts" : {
+        "14" : 2,
+        "28" : 3,
+        "alle" : 5
+      },
+      "maxCount" : 5
+    },
+    "arbeitsort_plz" : {
+      "counts" : {
+        "35043" : 1,
+        "35066" : 2,
+        "35274" : 1,
+        "35315" : 1
+      },
+      "maxCount" : 5
+    },
+    "arbeitgeber" : {
+      "counts" : {
+        "ARWA Personaldienstleistungen GmbH" : 1,
+        "Aileen Margo Nau" : 1,
+        "Kreisausschuß des Landkreises Marburg-Biedenkopf" : 1,
+        "Landesbetrieb Landwirtschaft Kassel" : 1,
+        "Ochse GbR" : 1
+      },
+      "maxCount" : 5
+    },
+    "beruf" : {
+      "counts" : {
+        "Agrarwissenschaftler/in / Agrarökonom/in" : 1,
+        "Bürokaufmann/-frau" : 1,
+        "Fachangestellte/r - Bürokommunikation" : 1,
+        "Helfer/in - Landwirtschaft" : 3,
+        "Landwirt/in" : 1,
+        "Pferdepfleger/in" : 1,
+        "Verwaltungsfachangestellte/r - Landesverwaltung" : 1
+      },
+      "maxCount" : 5
+    },
+    "branche" : {
+      "counts" : {
+        "12" : 2,
+        "18" : 2,
+        "28" : 1
+      },
+      "maxCount" : 5
+    },
+    "quereinstieg" : {
+      "counts" : {
+        "false" : 4,
+        "true" : 1
+      },
+      "maxCount" : 5
+    },
+    "arbeitszeit" : {
+      "counts" : {
+        "tz" : 3,
+        "vz" : 3
+      },
+      "maxCount" : 5
+    },
+    "eintrittsdatum" : {
+      "counts" : {
+        "10_01_01-now" : 4,
+        "25_12_01-26_01_01" : 4,
+        "26_02_01-26_03_01" : 1
+      },
+      "maxCount" : 5
+    },
+    "zeitarbeit" : {
+      "counts" : {
+        "false" : 4,
+        "true" : 1
+      },
+      "maxCount" : 5
+    }
+  }
+}

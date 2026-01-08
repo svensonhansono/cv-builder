@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { CVData } from "@/types/cv";
-import { Download, Mail, Phone, MapPin } from "lucide-react";
+import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -19,13 +19,25 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
 
-  // Adjustable margins in cm
-  const [margins, setMargins] = useState({
+  // Default margins in cm - use saved values from data or defaults
+  const defaultMargins = {
     top: 1.5,
     bottom: 1.5,
     left: 2.5,
     right: 2.0
-  });
+  };
+
+  // Use margins from data if available, otherwise use defaults
+  const margins = data.margins || defaultMargins;
+
+  // Function to update margins and save to data
+  const setMargins = (updater: (prev: typeof margins) => typeof margins) => {
+    const newMargins = updater(margins);
+    onChange({
+      ...data,
+      margins: newMargins
+    });
+  };
 
   // Calculate page breaks based on current margins
   const contentHeight = 29.7 - margins.top - margins.bottom;
@@ -37,16 +49,29 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
     // Wait a bit for content to render
     const timer = setTimeout(() => {
       if (contentContainerRef.current && cvContainerRef.current) {
-        const contentHeightPx = contentContainerRef.current.scrollHeight;
+        // Hide page masks temporarily for accurate measurement
+        const pageMasks = contentContainerRef.current.querySelectorAll('[data-page-mask]');
+        pageMasks.forEach(mask => {
+          (mask as HTMLElement).style.display = 'none';
+        });
+
+        // Get actual content height
+        const actualContentHeight = contentContainerRef.current.scrollHeight;
+
+        // Restore page masks
+        pageMasks.forEach(mask => {
+          (mask as HTMLElement).style.display = '';
+        });
+
         const cvContainerHeightPx = cvContainerRef.current.offsetHeight;
 
         // Calculate how much one page content area is in pixels
         const pageContentHeightPx = (contentHeight / 29.7) * cvContainerHeightPx;
 
         // Calculate how many pages we need
-        const pagesNeeded = Math.ceil(contentHeightPx / pageContentHeightPx);
+        const pagesNeeded = Math.ceil(actualContentHeight / pageContentHeightPx);
 
-        console.log('Content height px:', contentHeightPx);
+        console.log('Content height px:', actualContentHeight);
         console.log('Page height px:', pageContentHeightPx);
         console.log('Pages needed:', pagesNeeded);
 
@@ -109,7 +134,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
     // Store original state
     const originalPage = currentPage;
 
-    // Hide margin guides during PDF export
+    // Hide margin guides during PDF export (but keep page masks active!)
     const marginGuides = document.querySelectorAll('[data-margin-guides]');
     marginGuides.forEach(guide => {
       (guide as HTMLElement).style.visibility = 'hidden';
@@ -159,16 +184,18 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
         setCurrentPage(pageNum);
 
         // Wait for page to render
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // Capture the CV container as it appears now
         const canvas = await html2canvas(cvContainerRef.current, {
-          scale: 2,
+          scale: 3,
           useCORS: true,
+          allowTaint: true,
           logging: false,
           backgroundColor: "#0f172a",
           width: cvContainerRef.current.offsetWidth,
           height: cvContainerRef.current.offsetHeight,
+          foreignObjectRendering: false,
         });
 
         if (pageNum > 0) {
@@ -211,8 +238,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="p-4 sm:p-6 lg:p-8">
+    <div className="h-full overflow-y-auto overflow-x-hidden">
+      <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -265,7 +292,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
               </Button>
             </div>
 
-            {/* CV Container */}
+            {/* CV Container Wrapper - scales on mobile */}
+            <div className="cv-scale-wrapper origin-top">
             <div
               ref={cvContainerRef}
               className="rounded-lg sm:rounded-xl lg:rounded-2xl glass shadow-2xl shadow-purple-500/20 border border-white/10 relative"
@@ -288,7 +316,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   }}
                   onMouseDown={(e) => handleMarginDrag(e, 'top')}
                 >
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-0 bg-purple-500 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none">
+                  <div className="absolute left-1/2 -translate-x-1/2 -top-6 bg-purple-500 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none">
                     ↕ Oben: {margins.top.toFixed(1)} cm
                   </div>
                 </div>
@@ -303,7 +331,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   }}
                   onMouseDown={(e) => handleMarginDrag(e, 'bottom')}
                 >
-                  <div className="absolute left-1/2 -translate-x-1/2 top-0 bg-purple-500 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none">
+                  <div className="absolute left-1/2 -translate-x-1/2 -bottom-6 bg-purple-500 text-white px-3 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none">
                     ↕ Unten: {margins.bottom.toFixed(1)} cm
                   </div>
                 </div>
@@ -318,7 +346,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   }}
                   onMouseDown={(e) => handleMarginDrag(e, 'left')}
                 >
-                  <div className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-full bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg) translateY(-50%)' }}>
+                  <div className="absolute top-1/2 -translate-y-1/2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg) translateY(-50%)', right: '4px' }}>
                     ↔ Links: {margins.left.toFixed(1)} cm
                   </div>
                 </div>
@@ -333,11 +361,12 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   }}
                   onMouseDown={(e) => handleMarginDrag(e, 'right')}
                 >
-                  <div className="absolute top-1/2 -translate-y-1/2 translate-x-1/2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg) translateY(-50%)' }}>
+                  <div className="absolute top-1/2 -translate-y-1/2 bg-purple-500 text-white px-2 py-1 rounded text-xs font-medium whitespace-nowrap shadow-lg pointer-events-none" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg) translateY(-50%)', left: '4px' }}>
                     ↔ Rechts: {margins.right.toFixed(1)} cm
                   </div>
                 </div>
               </div>
+
 
               {/* Content area */}
               <div
@@ -374,7 +403,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           left: `-${margins.left}cm`,
                           right: `-${margins.right}cm`,
                           height: `${contentHeight}cm`,
-                          background: '#0f172a',
+                          background: '#161b2e',
                           zIndex: 50,
                         }}
                       />
@@ -385,18 +414,18 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.2 }}
-                    className="mb-6 sm:mb-8 pb-6 sm:pb-8 border-b border-white/10"
+                    className="mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-white/10"
                   >
-                    <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 items-start">
+                    <div className="flex gap-4 sm:gap-6 items-start">
                       {/* Profile Photo */}
                       {data.personalInfo.photoUrl && (
                         <motion.div
                           initial={{ opacity: 0, scale: 0.8 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ duration: 0.5, delay: 0.3 }}
-                          className="relative"
+                          className="relative flex-shrink-0"
                         >
-                          <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 rounded-full overflow-hidden border-4 border-purple-500/30 shadow-xl shadow-purple-500/30">
+                          <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-purple-500/30 shadow-xl shadow-purple-500/30">
                             <img
                               src={data.personalInfo.photoUrl}
                               alt={`${data.personalInfo.firstName} ${data.personalInfo.lastName}`}
@@ -406,10 +435,10 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                         </motion.div>
                       )}
 
-                      {/* Text Content */}
+                      {/* Name, Title and Contact details */}
                       <div className="flex-1">
                         <h1
-                          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 gradient-text outline-none"
+                          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 text-white outline-none"
                           contentEditable={true}
                           suppressContentEditableWarning
                           onBlur={(e) => {
@@ -428,7 +457,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           {data.personalInfo.firstName} {data.personalInfo.lastName}
                         </h1>
                         <p
-                          className="text-base sm:text-lg md:text-xl mb-3 sm:mb-4 text-purple-300 outline-none"
+                          className="text-base sm:text-lg md:text-xl mb-3 sm:mb-4 text-white outline-none"
                           contentEditable={true}
                           suppressContentEditableWarning
                           onBlur={(e) => {
@@ -441,24 +470,40 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           {data.personalInfo.title}
                         </p>
 
-                        <div className="flex flex-wrap gap-2 sm:gap-3 md:gap-4 text-xs sm:text-sm text-foreground/70">
+                        {/* Contact details */}
+                        <div className="flex flex-col gap-1 text-xs sm:text-sm text-foreground/70">
                           {data.personalInfo.email && (
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                              <Mail className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-purple-400" />
-                              <span className="break-all">{data.personalInfo.email}</span>
+                            <div className="flex items-center gap-2">
+                              <i className="fa-solid fa-envelope text-white"></i>
+                              <span>{data.personalInfo.email}</span>
                             </div>
                           )}
-                          {data.personalInfo.phone && (
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                              <Phone className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-purple-400" />
-                              <span>{data.personalInfo.phone}</span>
+                          {data.personalInfo.phone && data.personalInfo.location ? (
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center gap-2">
+                                <i className="fa-solid fa-phone text-white"></i>
+                                <span>{data.personalInfo.phone}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <i className="fa-solid fa-location-dot text-white"></i>
+                                <span>{data.personalInfo.location}</span>
+                              </div>
                             </div>
-                          )}
-                          {data.personalInfo.location && (
-                            <div className="flex items-center gap-1.5 sm:gap-2">
-                              <MapPin className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0 text-purple-400" />
-                              <span>{data.personalInfo.location}</span>
-                            </div>
+                          ) : (
+                            <>
+                              {data.personalInfo.phone && (
+                                <div className="flex items-center gap-2">
+                                  <i className="fa-solid fa-phone text-white"></i>
+                                  <span>{data.personalInfo.phone}</span>
+                                </div>
+                              )}
+                              {data.personalInfo.location && (
+                                <div className="flex items-center gap-2">
+                                  <i className="fa-solid fa-location-dot text-white"></i>
+                                  <span>{data.personalInfo.location}</span>
+                                </div>
+                              )}
+                            </>
                           )}
                         </div>
                       </div>
@@ -474,24 +519,26 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       className="mb-6 sm:mb-8"
                     >
                       {/* Spacer */}
-                      <div
-                        className="min-h-[1.5em] outline-none text-foreground/20"
-                        contentEditable={true}
-                        suppressContentEditableWarning
-                        onBlur={(e) => {
-                          onChange({
-                            ...data,
-                            spacerBeforeExperience: e.currentTarget.textContent || ""
-                          });
-                        }}
-                        style={{ whiteSpace: 'pre-wrap', cursor: 'text', minHeight: '1.5em', display: 'block' }}
-                      >
-                        {data.spacerBeforeExperience || "\u200B"}
-                      </div>
+                      {data.spacerBeforeExperience && (
+                        <div
+                          className="outline-none text-foreground/20"
+                          contentEditable={true}
+                          suppressContentEditableWarning
+                          onInput={(e) => {
+                            onChange({
+                              ...data,
+                              spacerBeforeExperience: e.currentTarget.textContent || ""
+                            });
+                          }}
+                          style={{ whiteSpace: 'pre-wrap', cursor: 'text', display: 'block', fontSize: '11pt', lineHeight: '1.5' }}
+                        >
+                          {data.spacerBeforeExperience}
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                         <h2
-                          className="font-bold gradient-text outline-none"
+                          className="font-bold text-white outline-none"
                           style={{ fontSize: '14pt', whiteSpace: 'pre-wrap' }}
                           contentEditable={true}
                           suppressContentEditableWarning
@@ -520,7 +567,6 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
                             className="relative pl-4 sm:pl-6 border-l-2 border-purple-500/30 hover:border-purple-500/60 transition-colors"
                           >
-                            <div className="absolute -left-[7px] sm:-left-[9px] top-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-purple-500 shadow-lg shadow-purple-500/50" />
 
                             <div className="mb-1">
                               <h3
@@ -537,7 +583,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                                 {exp.position || "Position"}
                               </h3>
                               <p
-                                className="text-sm sm:text-base font-medium text-purple-300 outline-none"
+                                className="text-sm sm:text-base font-medium text-white outline-none"
                                 contentEditable={true}
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -557,12 +603,29 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
 
                             {exp.bulletPoints && exp.bulletPoints.length > 0 && exp.bulletPoints.some(bp => bp.trim()) && (
                               <div className="space-y-1">
-                                {exp.bulletPoints.filter(bp => bp.trim()).map((bullet, idx) => (
-                                  <div key={idx} className="flex gap-2 leading-relaxed text-foreground/80" style={{ fontSize: '11pt' }}>
-                                    <span className="text-purple-400 flex-shrink-0">•</span>
-                                    <span style={{ whiteSpace: 'pre-wrap' }}>{bullet}</span>
-                                  </div>
-                                ))}
+                                {exp.bulletPoints.filter(bp => bp.trim()).map((bullet, idx) => {
+                                  const originalIndex = exp.bulletPoints.findIndex((bp, i) => i >= idx && bp === bullet);
+                                  return (
+                                    <div key={idx} className="flex gap-2 leading-relaxed text-foreground/80" style={{ fontSize: '11pt' }}>
+                                      <span className="text-white flex-shrink-0">•</span>
+                                      <span
+                                        contentEditable={true}
+                                        suppressContentEditableWarning
+                                        className="outline-none flex-1"
+                                        style={{ whiteSpace: 'pre-wrap' }}
+                                        onBlur={(e) => {
+                                          const newExps = [...data.experiences];
+                                          const newBulletPoints = [...newExps[index].bulletPoints];
+                                          newBulletPoints[originalIndex] = e.currentTarget.textContent || "";
+                                          newExps[index] = { ...newExps[index], bulletPoints: newBulletPoints };
+                                          onChange({ ...data, experiences: newExps });
+                                        }}
+                                      >
+                                        {bullet}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
                               </div>
                             )}
                           </motion.div>
@@ -580,24 +643,26 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       className="mb-6 sm:mb-8"
                     >
                       {/* Spacer */}
-                      <div
-                        className="min-h-[1.5em] outline-none text-foreground/20"
-                        contentEditable={true}
-                        suppressContentEditableWarning
-                        onBlur={(e) => {
-                          onChange({
-                            ...data,
-                            spacerBeforeEducation: e.currentTarget.textContent || ""
-                          });
-                        }}
-                        style={{ whiteSpace: 'pre-wrap', cursor: 'text', minHeight: '1.5em', display: 'block' }}
-                      >
-                        {data.spacerBeforeEducation || "\u200B"}
-                      </div>
+                      {data.spacerBeforeEducation && (
+                        <div
+                          className="outline-none text-foreground/20"
+                          contentEditable={true}
+                          suppressContentEditableWarning
+                          onInput={(e) => {
+                            onChange({
+                              ...data,
+                              spacerBeforeEducation: e.currentTarget.textContent || ""
+                            });
+                          }}
+                          style={{ whiteSpace: 'pre-wrap', cursor: 'text', display: 'block', fontSize: '11pt', lineHeight: '1.5' }}
+                        >
+                          {data.spacerBeforeEducation}
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                         <h2
-                          className="font-bold gradient-text outline-none"
+                          className="font-bold text-white outline-none"
                           style={{ fontSize: '14pt', whiteSpace: 'pre-wrap' }}
                           contentEditable={true}
                           suppressContentEditableWarning
@@ -626,7 +691,6 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
                             className="relative pl-4 sm:pl-6 border-l-2 border-purple-500/30 hover:border-purple-500/60 transition-colors"
                           >
-                            <div className="absolute -left-[7px] sm:-left-[9px] top-0 w-3 h-3 sm:w-4 sm:h-4 rounded-full bg-purple-500 shadow-lg shadow-purple-500/50" />
 
                             <div className="mb-1">
                               <h3
@@ -636,7 +700,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                                 onBlur={(e) => {
                                   const text = e.currentTarget.textContent || "";
                                   const newEducation = [...data.education];
-                                  newEducation[index] = { ...newEducation[index], degree: text };
+                                  newEducation[index] = { ...newEducation[index], degree: text, field: "" };
                                   onChange({ ...data, education: newEducation });
                                 }}
                                 style={{ whiteSpace: 'pre-wrap' }}
@@ -644,7 +708,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                                 {edu.degree || "Abschluss"} {edu.field && `in ${edu.field}`}
                               </h3>
                               <p
-                                className="text-sm sm:text-base font-medium text-purple-300 outline-none"
+                                className="text-sm sm:text-base font-medium text-white outline-none"
                                 contentEditable={true}
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -676,24 +740,26 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       className="mb-6 sm:mb-8"
                     >
                       {/* Spacer */}
-                      <div
-                        className="min-h-[1.5em] outline-none text-foreground/20"
-                        contentEditable={true}
-                        suppressContentEditableWarning
-                        onBlur={(e) => {
-                          onChange({
-                            ...data,
-                            spacerBeforeSkills: e.currentTarget.textContent || ""
-                          });
-                        }}
-                        style={{ whiteSpace: 'pre-wrap', cursor: 'text', minHeight: '1.5em', display: 'block' }}
-                      >
-                        {data.spacerBeforeSkills || "\u200B"}
-                      </div>
+                      {data.spacerBeforeSkills && (
+                        <div
+                          className="outline-none text-foreground/20"
+                          contentEditable={true}
+                          suppressContentEditableWarning
+                          onInput={(e) => {
+                            onChange({
+                              ...data,
+                              spacerBeforeSkills: e.currentTarget.textContent || ""
+                            });
+                          }}
+                          style={{ whiteSpace: 'pre-wrap', cursor: 'text', display: 'block', fontSize: '11pt', lineHeight: '1.5' }}
+                        >
+                          {data.spacerBeforeSkills}
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                         <h2
-                          className="font-bold gradient-text outline-none"
+                          className="font-bold text-white outline-none"
                           style={{ fontSize: '14pt', whiteSpace: 'pre-wrap' }}
                           contentEditable={true}
                           suppressContentEditableWarning
@@ -746,7 +812,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   )}
 
                   {/* Signature */}
-                  {data.signatureLocation && data.signatureDate && (
+                  {data.showSignature && data.signatureLocation && data.signatureDate && (
                     <motion.section
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -754,15 +820,58 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       className="mt-12 sm:mt-16"
                     >
                       <div className="flex flex-col items-start gap-8">
-                        <p className="text-sm text-foreground/70">
+                        <p
+                          className="text-sm text-foreground/70 outline-none"
+                          contentEditable={true}
+                          suppressContentEditableWarning
+                          onBlur={(e) => {
+                            const text = e.currentTarget.textContent || "";
+                            // Versuche, Ort und Datum zu trennen
+                            const parts = text.split(",").map(p => p.trim());
+                            if (parts.length >= 2) {
+                              onChange({
+                                ...data,
+                                signatureLocation: parts[0],
+                              });
+                            } else {
+                              onChange({
+                                ...data,
+                                signatureLocation: parts[0] || "",
+                              });
+                            }
+                          }}
+                          style={{ whiteSpace: 'pre-wrap' }}
+                        >
                           {data.signatureLocation}, {formatDate(data.signatureDate)}
                         </p>
 
                         <div className="flex flex-col gap-2">
-                          {data.signatureName && (
-                            <p className="text-2xl italic text-foreground" style={{ fontFamily: `'${data.signatureFont || 'Dancing Script'}', cursive` }}>
-                              {data.signatureName}
-                            </p>
+                          {/* Show signature image if available, otherwise show text signature */}
+                          {data.signatureImageUrl ? (
+                            <div className="mb-2">
+                              <img
+                                src={data.signatureImageUrl}
+                                alt="Signature"
+                                className="max-w-[200px] max-h-[80px] object-contain"
+                              />
+                            </div>
+                          ) : (
+                            data.signatureName && (
+                              <p
+                                className="text-2xl italic text-foreground outline-none"
+                                style={{ fontFamily: `'${data.signatureFont || 'Dancing Script'}', cursive`, whiteSpace: 'pre-wrap' }}
+                                contentEditable={true}
+                                suppressContentEditableWarning
+                                onBlur={(e) => {
+                                  onChange({
+                                    ...data,
+                                    signatureName: e.currentTarget.textContent || ""
+                                  });
+                                }}
+                              >
+                                {data.signatureName}
+                              </p>
+                            )
                           )}
                           <div className="w-48 border-b border-white/30"></div>
                           <p className="text-xs text-foreground/60">
@@ -774,6 +883,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                   )}
                 </div>
               </div>
+            </div>
             </div>
           </motion.div>
         </div>

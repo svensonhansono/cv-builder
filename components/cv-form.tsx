@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { DatePicker } from "@/components/ui/date-picker";
 import { CVData, Experience, Education, Skill } from "@/types/cv";
-import { Plus, Trash2, User, Briefcase, GraduationCap, Code, Upload, Image as ImageIcon, ChevronDown } from "lucide-react";
+import { Plus, Trash2, User, Briefcase, GraduationCap, Code, Upload, Image as ImageIcon, ChevronDown, PenTool } from "lucide-react";
 
 interface CVFormProps {
   data: CVData;
@@ -20,6 +21,7 @@ export function CVForm({ data, onChange }: CVFormProps) {
     experience: false,
     education: false,
     skills: false,
+    signature: false,
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -81,6 +83,47 @@ export function CVForm({ data, onChange }: CVFormProps) {
           // Convert to JPEG with quality 0.7
           const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
           updatePersonalInfo("photoUrl", compressedDataUrl);
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSignatureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (max 1MB for signature)
+      if (file.size > 1 * 1024 * 1024) {
+        alert("Bild ist zu groß! Bitte wähle ein Bild unter 1MB.");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const img = new Image();
+        img.onload = () => {
+          // Compress image
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+
+          // Max width 600px (reasonable for signature)
+          let width = img.width;
+          let height = img.height;
+          const maxWidth = 600;
+
+          if (width > maxWidth) {
+            height *= maxWidth / width;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convert to PNG with transparent background support
+          const compressedDataUrl = canvas.toDataURL('image/png', 0.8);
+          onChange({ ...data, signatureImageUrl: compressedDataUrl });
         };
         img.src = reader.result as string;
       };
@@ -220,7 +263,7 @@ export function CVForm({ data, onChange }: CVFormProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="glass rounded-lg sm:rounded-xl overflow-hidden"
+        className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
         <button
           onClick={() => toggleSection("personal")}
@@ -245,8 +288,9 @@ export function CVForm({ data, onChange }: CVFormProps) {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
+              className="overflow-visible"
             >
-              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4">
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4 overflow-visible">
                 {/* Vorname & Nachname */}
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
@@ -294,27 +338,85 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   </div>
                 </div>
 
-                {/* Ort */}
-                <div className="space-y-2">
-                  <Label htmlFor="location">Ort</Label>
-                  <Input
-                    id="location"
-                    value={data.personalInfo.location}
-                    onChange={(e) => updatePersonalInfo("location", e.target.value)}
-                    placeholder="Berlin, Deutschland"
-                  />
+                {/* Straße & PLZ/Ort */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="street">Straße & Hausnummer</Label>
+                    <Input
+                      id="street"
+                      value={data.personalInfo.street || ""}
+                      onChange={(e) => updatePersonalInfo("street", e.target.value)}
+                      placeholder="Musterstraße 123"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="location">PLZ & Ort</Label>
+                    <Input
+                      id="location"
+                      value={data.personalInfo.location}
+                      onChange={(e) => updatePersonalInfo("location", e.target.value)}
+                      placeholder="10115 Berlin"
+                    />
+                  </div>
                 </div>
 
                 {/* Berufstitel */}
                 <div className="space-y-2">
-                  <Label htmlFor="title" className="block text-center">Berufstitel</Label>
+                  <Label htmlFor="title">Berufstitel</Label>
                   <Input
                     id="title"
                     value={data.personalInfo.title}
                     onChange={(e) => updatePersonalInfo("title", e.target.value)}
                     placeholder="Full-Stack Developer"
-                    className="text-center"
                   />
+                </div>
+
+                {/* Zusätzliche persönliche Daten (für V2/V3) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Geburtsdatum */}
+                  <div className="space-y-2">
+                    <Label htmlFor="birthDate">Geburtsdatum</Label>
+                    <Input
+                      id="birthDate"
+                      type="date"
+                      value={data.personalInfo.birthDate || ""}
+                      onChange={(e) => updatePersonalInfo("birthDate", e.target.value)}
+                    />
+                  </div>
+
+                  {/* Geburtsort */}
+                  <div className="space-y-2">
+                    <Label htmlFor="birthPlace">Geburtsort</Label>
+                    <Input
+                      id="birthPlace"
+                      value={data.personalInfo.birthPlace || ""}
+                      onChange={(e) => updatePersonalInfo("birthPlace", e.target.value)}
+                      placeholder="Berlin"
+                    />
+                  </div>
+
+                  {/* Nationalität */}
+                  <div className="space-y-2">
+                    <Label htmlFor="nationality">Nationalität</Label>
+                    <Input
+                      id="nationality"
+                      value={data.personalInfo.nationality || ""}
+                      onChange={(e) => updatePersonalInfo("nationality", e.target.value)}
+                      placeholder="deutsch"
+                    />
+                  </div>
+
+                  {/* Familienstand */}
+                  <div className="space-y-2">
+                    <Label htmlFor="maritalStatus">Familienstand</Label>
+                    <Input
+                      id="maritalStatus"
+                      value={data.personalInfo.maritalStatus || ""}
+                      onChange={(e) => updatePersonalInfo("maritalStatus", e.target.value)}
+                      placeholder="ledig"
+                    />
+                  </div>
                 </div>
 
                 {/* Photo Upload & Schriftart in einer Reihe */}
@@ -322,26 +424,9 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   {/* Photo Upload */}
                   <div className="space-y-2">
                     <Label>Profilbild</Label>
-                    <div className="flex flex-col gap-3">
-                      {/* Preview */}
-                      {data.personalInfo.photoUrl && (
-                        <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-purple-500/30 mx-auto">
-                          <img
-                            src={data.personalInfo.photoUrl}
-                            alt="Profile"
-                            className="w-full h-full object-cover"
-                          />
-                          <button
-                            onClick={() => updatePersonalInfo("photoUrl", "")}
-                            className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 text-white rounded-full p-1"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-
+                    <div className="flex gap-3 items-start">
                       {/* Upload/URL Input */}
-                      <div className="space-y-2">
+                      <div className="flex-1 space-y-2">
                         <div className="flex gap-2">
                           <label className="flex-1">
                             <input
@@ -371,6 +456,23 @@ export function CVForm({ data, onChange }: CVFormProps) {
                           <ImageIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                         </div>
                       </div>
+
+                      {/* Preview */}
+                      {data.personalInfo.photoUrl && (
+                        <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-purple-500/30 flex-shrink-0">
+                          <img
+                            src={data.personalInfo.photoUrl}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            onClick={() => updatePersonalInfo("photoUrl", "")}
+                            className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 text-white rounded-full p-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -385,6 +487,8 @@ export function CVForm({ data, onChange }: CVFormProps) {
                     >
                       <optgroup label="Serifenlose Schriften">
                         <option value="Arial">Arial</option>
+                        <option value="Montserrat">Montserrat</option>
+                        <option value="Source Sans Pro">Source Sans Pro</option>
                         <option value="Calibri">Calibri</option>
                         <option value="Verdana">Verdana</option>
                         <option value="Helvetica">Helvetica</option>
@@ -396,77 +500,6 @@ export function CVForm({ data, onChange }: CVFormProps) {
                       </optgroup>
                     </select>
                   </div>
-                </div>
-
-                {/* Unterschrift (DIN 5008) */}
-                <div className="space-y-3 pt-4 border-t border-white/10">
-                  <Label className="text-base font-semibold">Unterschrift (DIN 5008)</Label>
-
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="signatureLocation">Ort</Label>
-                      <Input
-                        id="signatureLocation"
-                        value={data.signatureLocation || ""}
-                        onChange={(e) => onChange({ ...data, signatureLocation: e.target.value })}
-                        placeholder="Berlin"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="signatureDate">Datum</Label>
-                      <Input
-                        id="signatureDate"
-                        type="date"
-                        value={data.signatureDate || ""}
-                        onChange={(e) => onChange({ ...data, signatureDate: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signatureName">Unterschrift (Name)</Label>
-                    <Input
-                      id="signatureName"
-                      value={data.signatureName || ""}
-                      onChange={(e) => onChange({ ...data, signatureName: e.target.value })}
-                      placeholder="Stefanie Herrmann"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="signatureFont">Unterschrift-Schriftart</Label>
-                    <select
-                      id="signatureFont"
-                      value={data.signatureFont || "Dancing Script"}
-                      onChange={(e) => onChange({ ...data, signatureFont: e.target.value })}
-                      className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 [&>option]:text-black [&>option]:bg-white"
-                    >
-                      <option value="Dancing Script">Dancing Script</option>
-                      <option value="Great Vibes">Great Vibes</option>
-                      <option value="Pacifico">Pacifico</option>
-                      <option value="Satisfy">Satisfy</option>
-                      <option value="Allura">Allura</option>
-                      <option value="Alex Brush">Alex Brush</option>
-                      <option value="Petit Formal Script">Petit Formal Script</option>
-                      <option value="Sacramento">Sacramento</option>
-                      <option value="Tangerine">Tangerine</option>
-                      <option value="Kaushan Script">Kaushan Script</option>
-                    </select>
-                    {data.signatureName && (
-                      <div className="p-3 bg-white/5 rounded-md border border-white/10 text-center">
-                        <p className="text-xs text-foreground/60 mb-2">Vorschau:</p>
-                        <p
-                          className="text-2xl italic text-purple-300"
-                          style={{ fontFamily: `'${data.signatureFont || 'Dancing Script'}', cursive` }}
-                        >
-                          {data.signatureName}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-foreground/60">Wird am Ende der PDF als Unterschriftszeile angezeigt</p>
                 </div>
 
                 {/* Zusammenklappen-Button unten rechts */}
@@ -495,29 +528,52 @@ export function CVForm({ data, onChange }: CVFormProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="glass rounded-lg sm:rounded-xl overflow-hidden"
+        className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
-        <div className="flex items-center justify-between p-4 sm:p-5 lg:p-6">
-          <div className="flex items-center gap-2 flex-1">
-            <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
-            <Input
-              value={data.sectionTitles?.experience || "Berufserfahrung"}
-              onChange={(e) => updateSectionTitle("experience", e.target.value)}
-              className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-              placeholder="Berufserfahrung"
-            />
-          </div>
-          <button
-            onClick={() => toggleSection("experience")}
-            className="hover:bg-white/5 transition-colors p-2 rounded"
-          >
-            <motion.div
-              animate={{ rotate: openSections.experience ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
+        <div className="p-4 sm:p-5 lg:p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
+              <Input
+                value={data.sectionTitles?.experience || "Berufserfahrung"}
+                onChange={(e) => updateSectionTitle("experience", e.target.value)}
+                className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder="Berufserfahrung"
+              />
+            </div>
+            <button
+              onClick={() => toggleSection("experience")}
+              className="hover:bg-white/5 transition-colors p-2 rounded"
             >
-              <ChevronDown className="w-5 h-5 text-purple-400" />
-            </motion.div>
-          </button>
+              <motion.div
+                animate={{ rotate: openSections.experience ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ChevronDown className="w-5 h-5 text-purple-400" />
+              </motion.div>
+            </button>
+          </div>
+
+          {/* Spacer Control */}
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <Label className="text-xs text-foreground/70">Abstand davor (Leerzeilen)</Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={Math.max(0, ((data.spacerBeforeExperience || "").match(/\n/g) || []).length)}
+                onChange={(e) => {
+                  const lines = parseInt(e.target.value);
+                  onChange({ ...data, spacerBeforeExperience: lines > 0 ? '\n'.repeat(lines) : '' });
+                }}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
+              />
+              <span className="text-sm text-foreground/60 w-8 text-right">
+                {Math.max(0, ((data.spacerBeforeExperience || "").match(/\n/g) || []).length)}
+              </span>
+            </div>
+          </div>
         </div>
 
         <AnimatePresence>
@@ -527,8 +583,9 @@ export function CVForm({ data, onChange }: CVFormProps) {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
+              className="overflow-visible"
             >
-              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4">
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4 overflow-visible">
                 <div className="flex justify-end">
                   <Button onClick={addExperience} variant="outline" size="sm">
                     <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -544,7 +601,7 @@ export function CVForm({ data, onChange }: CVFormProps) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="glass-hover rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 border border-white/5"
+              className="glass-hover rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 border border-white/5 overflow-visible"
             >
               <div className="flex justify-between items-start">
                 <h3 className="text-xs sm:text-sm font-semibold text-purple-300">
@@ -586,20 +643,20 @@ export function CVForm({ data, onChange }: CVFormProps) {
                 <div className="grid grid-cols-2 gap-2 sm:gap-3">
                   <div className="space-y-1">
                     <Label>Von</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={exp.startDate}
-                      onChange={(e) => updateExperience(exp.id, "startDate", e.target.value)}
+                      onChange={(date) => updateExperience(exp.id, "startDate", date)}
+                      placeholder="TT.MM.JJJJ"
                     />
                   </div>
 
                   <div className="space-y-1">
                     <Label>Bis</Label>
-                    <Input
-                      type="date"
+                    <DatePicker
                       value={exp.endDate}
-                      onChange={(e) => updateExperience(exp.id, "endDate", e.target.value)}
+                      onChange={(date) => updateExperience(exp.id, "endDate", date)}
                       disabled={exp.current}
+                      placeholder="TT.MM.JJJJ"
                     />
                   </div>
                 </div>
@@ -685,29 +742,52 @@ export function CVForm({ data, onChange }: CVFormProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="glass rounded-lg sm:rounded-xl overflow-hidden"
+        className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
-        <div className="flex items-center justify-between p-4 sm:p-5 lg:p-6">
-          <div className="flex items-center gap-2 flex-1">
-            <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
-            <Input
-              value={data.sectionTitles?.education || "Ausbildung"}
-              onChange={(e) => updateSectionTitle("education", e.target.value)}
-              className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-              placeholder="Ausbildung"
-            />
-          </div>
-          <button
-            onClick={() => toggleSection("education")}
-            className="hover:bg-white/5 transition-colors p-2 rounded"
-          >
-            <motion.div
-              animate={{ rotate: openSections.education ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
+        <div className="p-4 sm:p-5 lg:p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
+              <Input
+                value={data.sectionTitles?.education || "Ausbildung"}
+                onChange={(e) => updateSectionTitle("education", e.target.value)}
+                className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder="Ausbildung"
+              />
+            </div>
+            <button
+              onClick={() => toggleSection("education")}
+              className="hover:bg-white/5 transition-colors p-2 rounded"
             >
-              <ChevronDown className="w-5 h-5 text-purple-400" />
-            </motion.div>
-          </button>
+              <motion.div
+                animate={{ rotate: openSections.education ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ChevronDown className="w-5 h-5 text-purple-400" />
+              </motion.div>
+            </button>
+          </div>
+
+          {/* Spacer Control */}
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <Label className="text-xs text-foreground/70">Abstand davor (Leerzeilen)</Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={Math.max(0, ((data.spacerBeforeEducation || "").match(/\n/g) || []).length)}
+                onChange={(e) => {
+                  const lines = parseInt(e.target.value);
+                  onChange({ ...data, spacerBeforeEducation: lines > 0 ? '\n'.repeat(lines) : '' });
+                }}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
+              />
+              <span className="text-sm text-foreground/60 w-8 text-right">
+                {Math.max(0, ((data.spacerBeforeEducation || "").match(/\n/g) || []).length)}
+              </span>
+            </div>
+          </div>
         </div>
 
         <AnimatePresence>
@@ -717,8 +797,9 @@ export function CVForm({ data, onChange }: CVFormProps) {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
+              className="overflow-visible"
             >
-              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4">
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4 overflow-visible">
                 <div className="flex justify-end">
                   <Button onClick={addEducation} variant="outline" size="sm">
                     <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -734,7 +815,7 @@ export function CVForm({ data, onChange }: CVFormProps) {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.3, delay: index * 0.1 }}
-              className="glass-hover rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 border border-white/5"
+              className="glass-hover rounded-lg p-3 sm:p-4 space-y-2 sm:space-y-3 border border-white/5 overflow-visible"
             >
               <div className="flex justify-between items-start">
                 <h3 className="text-xs sm:text-sm font-semibold text-purple-300">
@@ -750,8 +831,8 @@ export function CVForm({ data, onChange }: CVFormProps) {
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:gap-3">
-                <div className="space-y-1 sm:col-span-2">
+              <div className="space-y-2 sm:space-y-3">
+                <div className="space-y-1">
                   <Label>Institution</Label>
                   <Input
                     value={edu.institution}
@@ -760,41 +841,45 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <Label>Abschluss</Label>
-                  <Input
-                    value={edu.degree}
-                    onChange={(e) => updateEducation(edu.id, "degree", e.target.value)}
-                    placeholder="Bachelor"
-                  />
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="space-y-1">
+                    <Label>Abschluss</Label>
+                    <Input
+                      value={edu.degree}
+                      onChange={(e) => updateEducation(edu.id, "degree", e.target.value)}
+                      placeholder="Bachelor"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label>Fachrichtung</Label>
+                    <Input
+                      value={edu.field}
+                      onChange={(e) => updateEducation(edu.id, "field", e.target.value)}
+                      placeholder="Informatik"
+                    />
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label>Fachrichtung</Label>
-                  <Input
-                    value={edu.field}
-                    onChange={(e) => updateEducation(edu.id, "field", e.target.value)}
-                    placeholder="Informatik"
-                  />
-                </div>
+                <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  <div className="space-y-1">
+                    <Label>Von</Label>
+                    <DatePicker
+                      value={edu.startDate}
+                      onChange={(date) => updateEducation(edu.id, "startDate", date)}
+                      placeholder="TT.MM.JJJJ"
+                    />
+                  </div>
 
-                <div className="space-y-1">
-                  <Label>Von</Label>
-                  <Input
-                    type="date"
-                    value={edu.startDate}
-                    onChange={(e) => updateEducation(edu.id, "startDate", e.target.value)}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label>Bis</Label>
-                  <Input
-                    type="date"
-                    value={edu.endDate}
-                    onChange={(e) => updateEducation(edu.id, "endDate", e.target.value)}
-                    disabled={edu.current}
-                  />
+                  <div className="space-y-1">
+                    <Label>Bis</Label>
+                    <DatePicker
+                      value={edu.endDate}
+                      onChange={(date) => updateEducation(edu.id, "endDate", date)}
+                      disabled={edu.current}
+                      placeholder="TT.MM.JJJJ"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -838,29 +923,52 @@ export function CVForm({ data, onChange }: CVFormProps) {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="glass rounded-lg sm:rounded-xl overflow-hidden"
+        className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
-        <div className="flex items-center justify-between p-4 sm:p-5 lg:p-6">
-          <div className="flex items-center gap-2 flex-1">
-            <Code className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
-            <Input
-              value={data.sectionTitles?.skills || "Skills"}
-              onChange={(e) => updateSectionTitle("skills", e.target.value)}
-              className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-              placeholder="Skills"
-            />
-          </div>
-          <button
-            onClick={() => toggleSection("skills")}
-            className="hover:bg-white/5 transition-colors p-2 rounded"
-          >
-            <motion.div
-              animate={{ rotate: openSections.skills ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
+        <div className="p-4 sm:p-5 lg:p-6 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 flex-1">
+              <Code className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
+              <Input
+                value={data.sectionTitles?.skills || "Skills"}
+                onChange={(e) => updateSectionTitle("skills", e.target.value)}
+                className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                placeholder="Skills"
+              />
+            </div>
+            <button
+              onClick={() => toggleSection("skills")}
+              className="hover:bg-white/5 transition-colors p-2 rounded"
             >
-              <ChevronDown className="w-5 h-5 text-purple-400" />
-            </motion.div>
-          </button>
+              <motion.div
+                animate={{ rotate: openSections.skills ? 180 : 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ChevronDown className="w-5 h-5 text-purple-400" />
+              </motion.div>
+            </button>
+          </div>
+
+          {/* Spacer Control */}
+          <div className="space-y-2 pt-2 border-t border-white/10">
+            <Label className="text-xs text-foreground/70">Abstand davor (Leerzeilen)</Label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={Math.max(0, ((data.spacerBeforeSkills || "").match(/\n/g) || []).length)}
+                onChange={(e) => {
+                  const lines = parseInt(e.target.value);
+                  onChange({ ...data, spacerBeforeSkills: lines > 0 ? '\n'.repeat(lines) : '' });
+                }}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
+              />
+              <span className="text-sm text-foreground/60 w-8 text-right">
+                {Math.max(0, ((data.spacerBeforeSkills || "").match(/\n/g) || []).length)}
+              </span>
+            </div>
+          </div>
         </div>
 
         <AnimatePresence>
@@ -870,8 +978,9 @@ export function CVForm({ data, onChange }: CVFormProps) {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
+              className="overflow-visible"
             >
-              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4">
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4 overflow-visible">
                 <div className="flex justify-end">
                   <Button onClick={addSkill} variant="outline" size="sm">
                     <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
@@ -880,7 +989,7 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   </Button>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           {data.skills.map((skill, index) => (
             <motion.div
               key={skill.id}
@@ -932,6 +1041,203 @@ export function CVForm({ data, onChange }: CVFormProps) {
                     <span>Einklappen</span>
                     <motion.div
                       animate={{ rotate: openSections.skills ? 180 : 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </motion.div>
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
+
+      {/* Signature */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.4 }}
+        className="glass rounded-lg sm:rounded-xl overflow-visible"
+      >
+        <button
+          onClick={() => toggleSection("signature")}
+          className="w-full flex items-center justify-between p-4 sm:p-5 lg:p-6 hover:bg-white/5 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <PenTool className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+            <h2 className="text-lg sm:text-xl font-bold gradient-text">Unterschrift (DIN 5008)</h2>
+          </div>
+          <motion.div
+            animate={{ rotate: openSections.signature ? 180 : 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <ChevronDown className="w-5 h-5 text-purple-400" />
+          </motion.div>
+        </button>
+
+        <AnimatePresence>
+          {openSections.signature && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-visible"
+            >
+              <div className="px-4 pb-4 sm:px-5 sm:pb-5 lg:px-6 lg:pb-6 space-y-3 sm:space-y-4 overflow-visible">
+                {/* Toggle */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="showSignature"
+                      checked={data.showSignature || false}
+                      onChange={(e) => onChange({ ...data, showSignature: e.target.checked })}
+                      className="rounded border-white/20 bg-white/5"
+                    />
+                    <Label htmlFor="showSignature" className="text-sm cursor-pointer">
+                      Digitale Unterschrift anzeigen
+                    </Label>
+                  </div>
+                </div>
+
+                <p className="text-xs text-foreground/60">
+                  Aktiviere dies, wenn du eine digitale Unterschrift in die PDF einfügen möchtest. Deaktiviere es, wenn du später händisch unterschreiben möchtest.
+                </p>
+
+                {data.showSignature && (
+                  <div className="space-y-4 pt-2">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="signatureLocation">Ort</Label>
+                        <Input
+                          id="signatureLocation"
+                          value={data.signatureLocation || ""}
+                          onChange={(e) => onChange({ ...data, signatureLocation: e.target.value })}
+                          placeholder="Berlin"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="signatureDate">Datum</Label>
+                        <DatePicker
+                          value={data.signatureDate || ""}
+                          onChange={(date) => onChange({ ...data, signatureDate: date })}
+                          placeholder="TT.MM.JJJJ"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Unterschrift-Bild Upload */}
+                      <div className="space-y-2">
+                        <Label>Unterschrift als Bild (Optional)</Label>
+                        <div className="flex gap-3 items-start">
+                          {/* Upload Button */}
+                          <div className="flex-1 space-y-2">
+                            <label>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleSignatureUpload}
+                                className="hidden"
+                                id="signature-upload"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="w-full cursor-pointer"
+                                onClick={() => document.getElementById("signature-upload")?.click()}
+                              >
+                                <Upload className="w-4 h-4 mr-2" />
+                                {data.signatureImageUrl ? "Anderes Bild hochladen" : "Unterschrift hochladen"}
+                              </Button>
+                            </label>
+                            <p className="text-xs text-foreground/60">
+                              Lade ein Bild deiner Unterschrift hoch
+                            </p>
+                          </div>
+
+                          {/* Preview */}
+                          {data.signatureImageUrl && (
+                            <div className="relative w-32 h-16 rounded-lg overflow-hidden border-2 border-purple-500/30 bg-white/5 flex items-center justify-center flex-shrink-0">
+                              <img
+                                src={data.signatureImageUrl}
+                                alt="Signature"
+                                className="max-w-full max-h-full object-contain"
+                              />
+                              <button
+                                onClick={() => onChange({ ...data, signatureImageUrl: "" })}
+                                className="absolute top-1 right-1 bg-red-500/80 hover:bg-red-600 text-white rounded-full p-1"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Text-Unterschrift (nur wenn kein Bild) */}
+                      {!data.signatureImageUrl && (
+                        <div className="space-y-2">
+                          <Label>Unterschrift-Vorschau</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-2">
+                              <Input
+                                id="signatureName"
+                                value={data.signatureName || ""}
+                                onChange={(e) => onChange({ ...data, signatureName: e.target.value })}
+                                placeholder="Name"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <select
+                                id="signatureFont"
+                                value={data.signatureFont || "Dancing Script"}
+                                onChange={(e) => onChange({ ...data, signatureFont: e.target.value })}
+                                className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 [&>option]:text-black [&>option]:bg-white"
+                              >
+                                <option value="Dancing Script">Dancing Script</option>
+                                <option value="Great Vibes">Great Vibes</option>
+                                <option value="Pacifico">Pacifico</option>
+                                <option value="Satisfy">Satisfy</option>
+                                <option value="Allura">Allura</option>
+                                <option value="Alex Brush">Alex Brush</option>
+                                <option value="Petit Formal Script">Petit Formal Script</option>
+                                <option value="Sacramento">Sacramento</option>
+                                <option value="Tangerine">Tangerine</option>
+                                <option value="Kaushan Script">Kaushan Script</option>
+                              </select>
+                            </div>
+                          </div>
+                          {data.signatureName && (
+                            <div className="p-3 bg-white/5 rounded-md border border-white/10 text-center">
+                              <p className="text-xs text-foreground/60 mb-2">Vorschau:</p>
+                              <p
+                                className="text-2xl italic text-purple-300"
+                                style={{ fontFamily: `'${data.signatureFont || 'Dancing Script'}', cursive` }}
+                              >
+                                {data.signatureName}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Zusammenklappen-Button unten rechts */}
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={() => toggleSection("signature")}
+                    className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    <span>Einklappen</span>
+                    <motion.div
+                      animate={{ rotate: openSections.signature ? 180 : 0 }}
                       transition={{ duration: 0.3 }}
                     >
                       <ChevronDown className="w-4 h-4" />

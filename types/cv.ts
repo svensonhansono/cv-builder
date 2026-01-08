@@ -3,10 +3,22 @@ export interface PersonalInfo {
   lastName: string;
   email: string;
   phone: string;
+  street?: string;
   location: string;
   title: string;
   summary: string;
   photoUrl: string;
+  birthDate?: string;
+  birthPlace?: string;
+  nationality?: string;
+  maritalStatus?: string;
+}
+
+export interface CVMargins {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
 }
 
 export interface Experience {
@@ -16,8 +28,8 @@ export interface Experience {
   startDate: string;
   endDate: string;
   current: boolean;
-  description: string; // kept for backward compatibility
-  bulletPoints?: string[]; // new field for bullet points
+  description: string;
+  bulletPoints: string[];
 }
 
 export interface Education {
@@ -33,7 +45,27 @@ export interface Education {
 export interface Skill {
   id: string;
   name: string;
-  level: number; // 1-5
+  level: number;
+}
+
+export interface SectionTitles {
+  experience: string;
+  education: string;
+  skills: string;
+}
+
+export interface CoverLetter {
+  recipientCompany?: string;
+  recipientName?: string;
+  recipientPosition?: string;
+  recipientStreet?: string;
+  recipientCity?: string;
+  subject?: string;
+  salutation?: string;
+  introText?: string;
+  mainText?: string;
+  closingText?: string;
+  closing?: string;
 }
 
 export interface CVData {
@@ -41,17 +73,80 @@ export interface CVData {
   experiences: Experience[];
   education: Education[];
   skills: Skill[];
-  sectionTitles?: {
-    experience: string;
-    education: string;
-    skills: string;
+  sectionTitles: SectionTitles;
+  spacerBeforeExperience: string;
+  spacerBeforeEducation: string;
+  spacerBeforeSkills: string;
+  fontFamily: string;
+  signatureLocation: string;
+  signatureDate: string;
+  signatureName: string;
+  signatureFont: string;
+  signatureImageUrl: string;
+  showSignature: boolean;
+  coverLetter: CoverLetter;
+  margins?: CVMargins;
+}
+
+export type SubscriptionTier = "free" | "premium";
+
+export type SubscriptionStatus = "trialing" | "active" | "canceled" | "past_due" | "incomplete";
+
+export interface UserSubscription {
+  tier: SubscriptionTier;
+  subscriptionId?: string;
+  customerId?: string;
+  startDate?: string;
+  endDate?: string;
+  autoRenew?: boolean;
+  status?: SubscriptionStatus;
+  trialStartDate?: string;
+  trialEndDate?: string;
+  cancelAtPeriodEnd?: boolean;
+  paymentMethodAttached?: boolean;
+}
+
+// Job-related types for Arbeitsagentur integration
+export interface JobLocation {
+  ort?: string;
+  plz?: string;
+  strasse?: string;
+  land?: string;
+  koordinaten?: {
+    lat: number;
+    lon: number;
   };
-  spacerBeforeExperience?: string;
-  spacerBeforeEducation?: string;
-  spacerBeforeSkills?: string;
-  fontFamily?: string;
-  signatureLocation?: string; // Ort für die Unterschrift
-  signatureDate?: string; // Datum für die Unterschrift
-  signatureName?: string; // Name für die Unterschrift
-  signatureFont?: string; // Schriftart für die Unterschrift
+}
+
+export interface JobContact {
+  name?: string;
+  telefon?: string;
+  email?: string;
+  anschrift?: JobLocation;
+}
+
+export interface JobSkill {
+  hierarchie?: string;
+  auspraegung?: string;
+}
+
+export interface Job {
+  id: string; // Firestore document ID
+  refnr: string; // Arbeitsagentur reference number
+  titel: string;
+  arbeitgeber?: string;
+  arbeitsort?: JobLocation;
+  stellenbeschreibung?: string;
+  fertigkeiten?: JobSkill[];
+  verguetung?: string;
+  befristung?: string;
+  aktuelleVeroeffentlichungsdatum?: string;
+  eintrittsdatum?: string;
+  kontakt?: JobContact; // Nur verfügbar nach CAPTCHA-Lösung
+  logoUrl?: string;
+
+  // Metadata
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+  lastSyncedAt?: string; // Wann wurde dieser Job zuletzt von Arbeitsagentur abgerufen
 }

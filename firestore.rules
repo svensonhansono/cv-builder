@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users collection - users can only read/write their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Jobs collection - all authenticated users can read
+    match /jobs/{jobId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only backend functions can write
+    }
+
+    // CAPTCHA sessions - only backend functions can access
+    match /captcha_sessions/{sessionId} {
+      allow read, write: if false; // Only Cloud Functions
+    }
+
+    // Temp registrations - only backend functions can access
+    match /temp_registrations/{sessionId} {
+      allow read, write: if false; // Only Cloud Functions
+    }
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
