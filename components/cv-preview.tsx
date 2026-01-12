@@ -1,23 +1,30 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { motion } from "framer-motion";
 import { CVData } from "@/types/cv";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
 interface CVPreviewProps {
   data: CVData;
   onChange: (data: CVData) => void;
+  currentPage: number;
+  setCurrentPage: (page: number | ((p: number) => number)) => void;
+  totalPages: number;
+  setTotalPages: (pages: number) => void;
+  setIsGenerating: (generating: boolean) => void;
 }
 
-export function CVPreview({ data, onChange }: CVPreviewProps) {
+export interface CVPreviewHandle {
+  handleDownload: () => Promise<void>;
+}
+
+export const CVPreview = forwardRef<CVPreviewHandle, CVPreviewProps>(({ data, onChange, currentPage, setCurrentPage, totalPages, setTotalPages, setIsGenerating }, ref) => {
   const cvContainerRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [isGeneratingLocal, setIsGeneratingLocal] = useState(false);
 
   // Default margins in cm - use saved values from data or defaults
   const defaultMargins = {
@@ -30,11 +37,21 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
   // Use margins from data if available, otherwise use defaults
   const margins = data.margins || defaultMargins;
 
+  // Keep refs updated for use in event handlers (to avoid stale closures)
+  const dataRef = useRef(data);
+  const marginsRef = useRef(margins);
+  useEffect(() => {
+    dataRef.current = data;
+    marginsRef.current = margins;
+  }, [data, margins]);
+
   // Function to update margins and save to data
   const setMargins = (updater: (prev: typeof margins) => typeof margins) => {
-    const newMargins = updater(margins);
+    const currentMargins = marginsRef.current;
+    const newMargins = updater(currentMargins);
+    marginsRef.current = newMargins;
     onChange({
-      ...data,
+      ...dataRef.current,
       margins: newMargins
     });
   };
@@ -43,8 +60,6 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
   const contentHeight = 29.7 - margins.top - margins.bottom;
 
   // Calculate actual number of pages based on content
-  const [totalPages, setTotalPages] = useState(1);
-
   useEffect(() => {
     // Wait a bit for content to render
     const timer = setTimeout(() => {
@@ -127,8 +142,9 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
 
 
   const handleDownload = async () => {
-    if (isGenerating) return;
+    if (isGeneratingLocal) return;
 
+    setIsGeneratingLocal(true);
     setIsGenerating(true);
 
     // Store original state
@@ -140,7 +156,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
       (guide as HTMLElement).style.visibility = 'hidden';
     });
 
-    // Remove glass effect temporarily for consistent background color
+    // Remove glass effect temporarily (keep background for proper capture)
     const hadGlass = cvContainerRef.current?.classList.contains('glass');
     if (cvContainerRef.current && hadGlass) {
       cvContainerRef.current.classList.remove('glass');
@@ -157,6 +173,15 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
       htmlEl.style.webkitBackgroundClip = 'unset';
       htmlEl.style.webkitTextFillColor = 'unset';
       htmlEl.style.color = '#c4b5fd'; // Light purple color
+    });
+
+    // Hide purple timeline borders during PDF export
+    const timelineBorders = cvContainerRef.current?.querySelectorAll('.border-l-2') || [];
+    const originalBorderStyles: string[] = [];
+    timelineBorders.forEach((el, index) => {
+      const htmlEl = el as HTMLElement;
+      originalBorderStyles[index] = htmlEl.style.borderLeft;
+      htmlEl.style.borderLeft = 'none';
     });
 
     await new Promise(resolve => setTimeout(resolve, 200));
@@ -186,23 +211,23 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
         // Wait for page to render
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Capture the CV container as it appears now
+        // Capture the CV container
         const canvas = await html2canvas(cvContainerRef.current, {
-          scale: 3,
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           logging: false,
-          backgroundColor: "#0f172a",
+          backgroundColor: data.colorScheme === 'light' ? '#ffffff' : '#10172b',
           width: cvContainerRef.current.offsetWidth,
           height: cvContainerRef.current.offsetHeight,
-          foreignObjectRendering: false,
         });
 
         if (pageNum > 0) {
           pdf.addPage();
         }
 
-        const imgData = canvas.toDataURL("image/jpeg", 0.95);
+        // Add as JPEG with compression for small file size
+        const imgData = canvas.toDataURL("image/jpeg", 0.8);
         pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
       }
 
@@ -231,15 +256,36 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
         htmlEl.style.cssText = originalStyles[index];
       });
 
+      // Restore timeline borders
+      timelineBorders.forEach((el, index) => {
+        const htmlEl = el as HTMLElement;
+        htmlEl.style.borderLeft = originalBorderStyles[index];
+      });
+
       // Restore original page
       setCurrentPage(originalPage);
+      setIsGeneratingLocal(false);
       setIsGenerating(false);
     }
   };
 
+  // Expose handleDownload to parent via ref
+  useImperativeHandle(ref, () => ({
+    handleDownload
+  }));
+
+  // Handle wheel events from CV container and forward to scroll container
+  const handleCvWheel = (e: React.WheelEvent) => {
+    e.stopPropagation();
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop += e.deltaY;
+      scrollContainerRef.current.scrollLeft += e.deltaX;
+    }
+  };
+
   return (
-    <div className="h-full overflow-y-auto overflow-x-hidden">
-      <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden">
+    <div ref={scrollContainerRef} className="h-full overflow-y-auto overflow-x-hidden">
+      <div className="p-4 sm:p-6 lg:p-8 overflow-x-hidden pb-32">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -247,61 +293,19 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
             className="w-full mx-auto"
             style={{ maxWidth: '210mm' }}
           >
-            {/* Top Bar */}
-            <div className="flex justify-between items-center mb-4 sm:mb-6">
-              {/* Page Navigation */}
-              <div className="flex items-center gap-2 sm:gap-4">
-                <Button
-                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                  disabled={currentPage === 0}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 text-xs"
-                >
-                  ←
-                </Button>
-
-                <span className="text-xs sm:text-sm text-foreground/70 whitespace-nowrap">
-                  Seite {currentPage + 1} / {totalPages}
-                </span>
-
-                <Button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                  disabled={currentPage >= totalPages - 1}
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 text-xs"
-                >
-                  →
-                </Button>
-              </div>
-
-              {/* Download Button */}
-              <Button
-                onClick={handleDownload}
-                disabled={isGenerating}
-                className="gap-2 text-xs sm:text-sm"
-              >
-                <Download className={`w-3 h-3 sm:w-4 sm:h-4 ${isGenerating ? 'animate-bounce' : ''}`} />
-                <span className="hidden sm:inline">
-                  {isGenerating ? "PDF wird erstellt..." : "PDF Exportieren"}
-                </span>
-                <span className="sm:hidden">
-                  {isGenerating ? "..." : "PDF"}
-                </span>
-              </Button>
-            </div>
-
             {/* CV Container Wrapper - scales on mobile */}
             <div className="cv-scale-wrapper origin-top">
             <div
               ref={cvContainerRef}
-              className="rounded-lg sm:rounded-xl lg:rounded-2xl glass shadow-2xl shadow-purple-500/20 border border-white/10 relative"
+              onWheel={handleCvWheel}
+              className="glass shadow-2xl shadow-purple-500/20 border border-white/10 relative"
               style={{
                 width: '210mm',
                 height: '297mm',
-                fontFamily: data.fontFamily || 'Arial',
+                fontFamily: data.fontFamily || 'Montserrat',
                 overflow: 'hidden',
+                backgroundColor: data.colorScheme === 'light' ? '#ffffff' : '#10172b',
+                color: data.colorScheme === 'light' ? '#000000' : '#ffffff',
               }}
             >
               {/* Draggable margin guides */}
@@ -403,7 +407,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           left: `-${margins.left}cm`,
                           right: `-${margins.right}cm`,
                           height: `${contentHeight}cm`,
-                          background: '#161b2e',
+                          background: data.colorScheme === 'light' ? '#ffffff' : '#10172b',
                           zIndex: 50,
                         }}
                       />
@@ -414,7 +418,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6, delay: 0.2 }}
-                    className="mb-6 sm:mb-8 pb-3 sm:pb-4 border-b border-white/10"
+                    className="mb-4 sm:mb-6 pb-3 sm:pb-4 border-b"
+                    style={{ borderColor: data.colorScheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)' }}
                   >
                     <div className="flex gap-4 sm:gap-6 items-start">
                       {/* Profile Photo */}
@@ -425,7 +430,13 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           transition={{ duration: 0.5, delay: 0.3 }}
                           className="relative flex-shrink-0"
                         >
-                          <div className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-purple-500/30 shadow-xl shadow-purple-500/30">
+                          <div
+                            className="w-24 h-24 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-full overflow-hidden border-4 shadow-xl"
+                            style={{
+                              borderColor: data.colorScheme === 'light' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)',
+                              boxShadow: data.colorScheme === 'light' ? '0 20px 25px -5px rgba(0,0,0,0.1)' : '0 20px 25px -5px rgba(255,255,255,0.1)',
+                            }}
+                          >
                             <img
                               src={data.personalInfo.photoUrl}
                               alt={`${data.personalInfo.firstName} ${data.personalInfo.lastName}`}
@@ -438,7 +449,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       {/* Name, Title and Contact details */}
                       <div className="flex-1">
                         <h1
-                          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 text-white outline-none"
+                          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold mb-2 outline-none"
+                          style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                           contentEditable={true}
                           suppressContentEditableWarning
                           onBlur={(e) => {
@@ -457,7 +469,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           {data.personalInfo.firstName} {data.personalInfo.lastName}
                         </h1>
                         <p
-                          className="text-base sm:text-lg md:text-xl mb-3 sm:mb-4 text-white outline-none"
+                          className="text-base sm:text-lg md:text-xl mb-3 sm:mb-4 outline-none"
+                          style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                           contentEditable={true}
                           suppressContentEditableWarning
                           onBlur={(e) => {
@@ -471,39 +484,40 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                         </p>
 
                         {/* Contact details */}
-                        <div className="flex flex-col gap-1 text-xs sm:text-sm text-foreground/70">
-                          {data.personalInfo.email && (
-                            <div className="flex items-center gap-2">
-                              <i className="fa-solid fa-envelope text-white"></i>
-                              <span>{data.personalInfo.email}</span>
-                            </div>
-                          )}
-                          {data.personalInfo.phone && data.personalInfo.location ? (
+                        <div className="flex flex-col gap-1 text-xs sm:text-sm" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }}>
+                          {/* Row 1: Email + Phone */}
+                          {(data.personalInfo.email || data.personalInfo.phone) && (
                             <div className="flex items-center gap-4">
-                              <div className="flex items-center gap-2">
-                                <i className="fa-solid fa-phone text-white"></i>
-                                <span>{data.personalInfo.phone}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <i className="fa-solid fa-location-dot text-white"></i>
-                                <span>{data.personalInfo.location}</span>
-                              </div>
-                            </div>
-                          ) : (
-                            <>
+                              {data.personalInfo.email && (
+                                <div className="flex items-center gap-2">
+                                  <i className="fa-solid fa-envelope" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}></i>
+                                  <span>{data.personalInfo.email}</span>
+                                </div>
+                              )}
                               {data.personalInfo.phone && (
                                 <div className="flex items-center gap-2">
-                                  <i className="fa-solid fa-phone text-white"></i>
+                                  <i className="fa-solid fa-phone" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}></i>
                                   <span>{data.personalInfo.phone}</span>
                                 </div>
                               )}
-                              {data.personalInfo.location && (
-                                <div className="flex items-center gap-2">
-                                  <i className="fa-solid fa-location-dot text-white"></i>
-                                  <span>{data.personalInfo.location}</span>
-                                </div>
-                              )}
-                            </>
+                            </div>
+                          )}
+                          {/* Row 2: Location (includes city, PLZ, street) */}
+                          {data.personalInfo.location && (
+                            <div className="flex items-center gap-2">
+                              <i className="fa-solid fa-location-dot" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}></i>
+                              <span
+                                className="outline-none"
+                                contentEditable={true}
+                                suppressContentEditableWarning
+                                onBlur={(e) => {
+                                  onChange({
+                                    ...data,
+                                    personalInfo: { ...data.personalInfo, location: e.currentTarget.textContent || "" }
+                                  });
+                                }}
+                              >{data.personalInfo.location}</span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -521,7 +535,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       {/* Spacer */}
                       {data.spacerBeforeExperience && (
                         <div
-                          className="outline-none text-foreground/20"
+                          className="outline-none" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)' }}
                           contentEditable={true}
                           suppressContentEditableWarning
                           onInput={(e) => {
@@ -538,7 +552,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
 
                       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                         <h2
-                          className="font-bold text-white outline-none"
+                          className="font-bold outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                           style={{ fontSize: '14pt', whiteSpace: 'pre-wrap' }}
                           contentEditable={true}
                           suppressContentEditableWarning
@@ -565,12 +579,12 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.5 + index * 0.1 }}
-                            className="relative pl-4 sm:pl-6 border-l-2 border-purple-500/30 hover:border-purple-500/60 transition-colors"
+                            className="relative"
                           >
 
                             <div className="mb-1">
                               <h3
-                                className="text-base sm:text-lg font-semibold text-foreground outline-none"
+                                className="text-base sm:text-lg font-semibold outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                                 contentEditable={true}
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -583,7 +597,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                                 {exp.position || "Position"}
                               </h3>
                               <p
-                                className="text-sm sm:text-base font-medium text-white outline-none"
+                                className="text-sm sm:text-base font-medium outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                                 contentEditable={true}
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -597,7 +611,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                               </p>
                             </div>
 
-                            <p className="text-xs sm:text-sm mb-2 text-foreground/60">
+                            <p className="text-xs sm:text-sm mb-2" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
                               {formatDate(exp.startDate)} - {exp.current ? "Heute" : formatDate(exp.endDate)}
                             </p>
 
@@ -606,8 +620,8 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                                 {exp.bulletPoints.filter(bp => bp.trim()).map((bullet, idx) => {
                                   const originalIndex = exp.bulletPoints.findIndex((bp, i) => i >= idx && bp === bullet);
                                   return (
-                                    <div key={idx} className="flex gap-2 leading-relaxed text-foreground/80" style={{ fontSize: '11pt' }}>
-                                      <span className="text-white flex-shrink-0">•</span>
+                                    <div key={idx} className="flex gap-2 leading-relaxed" style={{ fontSize: '11pt', color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)' }}>
+                                      <span className="flex-shrink-0" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}>•</span>
                                       <span
                                         contentEditable={true}
                                         suppressContentEditableWarning
@@ -645,7 +659,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       {/* Spacer */}
                       {data.spacerBeforeEducation && (
                         <div
-                          className="outline-none text-foreground/20"
+                          className="outline-none" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)' }}
                           contentEditable={true}
                           suppressContentEditableWarning
                           onInput={(e) => {
@@ -662,7 +676,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
 
                       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                         <h2
-                          className="font-bold text-white outline-none"
+                          className="font-bold outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                           style={{ fontSize: '14pt', whiteSpace: 'pre-wrap' }}
                           contentEditable={true}
                           suppressContentEditableWarning
@@ -689,12 +703,12 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ duration: 0.4, delay: 0.6 + index * 0.1 }}
-                            className="relative pl-4 sm:pl-6 border-l-2 border-purple-500/30 hover:border-purple-500/60 transition-colors"
+                            className="relative"
                           >
 
                             <div className="mb-1">
                               <h3
-                                className="text-base sm:text-lg font-semibold text-foreground outline-none"
+                                className="text-base sm:text-lg font-semibold outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                                 contentEditable={true}
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -708,7 +722,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                                 {edu.degree || "Abschluss"} {edu.field && `in ${edu.field}`}
                               </h3>
                               <p
-                                className="text-sm sm:text-base font-medium text-white outline-none"
+                                className="text-sm sm:text-base font-medium outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                                 contentEditable={true}
                                 suppressContentEditableWarning
                                 onBlur={(e) => {
@@ -722,7 +736,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                               </p>
                             </div>
 
-                            <p className="text-xs sm:text-sm text-foreground/60">
+                            <p className="text-xs sm:text-sm" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
                               {formatDate(edu.startDate)} - {edu.current ? "Heute" : formatDate(edu.endDate)}
                             </p>
                           </motion.div>
@@ -742,7 +756,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                       {/* Spacer */}
                       {data.spacerBeforeSkills && (
                         <div
-                          className="outline-none text-foreground/20"
+                          className="outline-none" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.2)' }}
                           contentEditable={true}
                           suppressContentEditableWarning
                           onInput={(e) => {
@@ -759,7 +773,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
 
                       <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                         <h2
-                          className="font-bold text-white outline-none"
+                          className="font-bold outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                           style={{ fontSize: '14pt', whiteSpace: 'pre-wrap' }}
                           contentEditable={true}
                           suppressContentEditableWarning
@@ -789,20 +803,27 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             className="space-y-1.5 sm:space-y-2"
                           >
                             <div className="flex justify-between items-center">
-                              <span className="text-xs sm:text-sm font-medium text-foreground">
+                              <span className="text-xs sm:text-sm font-medium" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}>
                                 {skill.name || "Skill"}
                               </span>
-                              <span className="text-xs text-foreground/60">
+                              <span className="text-xs" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
                                 {skill.level}/5
                               </span>
                             </div>
 
-                            <div className="relative h-1.5 sm:h-2 bg-white/5 rounded-full overflow-hidden">
+                            <div
+                              className="relative h-1.5 sm:h-2 rounded-full overflow-hidden"
+                              style={{ backgroundColor: data.colorScheme === 'light' ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.05)' }}
+                            >
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${(skill.level / 5) * 100}%` }}
                                 transition={{ duration: 1, delay: 0.8 + index * 0.05 }}
-                                className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full shadow-lg shadow-purple-500/50"
+                                className="absolute inset-y-0 left-0 rounded-full shadow-lg"
+                                style={{
+                                  backgroundColor: data.colorScheme === 'light' ? 'rgba(0,0,0,0.8)' : 'rgba(255,255,255,0.8)',
+                                  boxShadow: data.colorScheme === 'light' ? '0 10px 15px -3px rgba(0,0,0,0.1)' : '0 10px 15px -3px rgba(255,255,255,0.1)',
+                                }}
                               />
                             </div>
                           </motion.div>
@@ -821,7 +842,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                     >
                       <div className="flex flex-col items-start gap-8">
                         <p
-                          className="text-sm text-foreground/70 outline-none"
+                          className="text-sm outline-none" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.7)' }}
                           contentEditable={true}
                           suppressContentEditableWarning
                           onBlur={(e) => {
@@ -858,7 +879,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                           ) : (
                             data.signatureName && (
                               <p
-                                className="text-2xl italic text-foreground outline-none"
+                                className="text-2xl italic outline-none" style={{ color: data.colorScheme === 'light' ? '#000000' : '#ffffff' }}
                                 style={{ fontFamily: `'${data.signatureFont || 'Dancing Script'}', cursive`, whiteSpace: 'pre-wrap' }}
                                 contentEditable={true}
                                 suppressContentEditableWarning
@@ -874,7 +895,7 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
                             )
                           )}
                           <div className="w-48 border-b border-white/30"></div>
-                          <p className="text-xs text-foreground/60">
+                          <p className="text-xs" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
                             (Unterschrift)
                           </p>
                         </div>
@@ -889,4 +910,6 @@ export function CVPreview({ data, onChange }: CVPreviewProps) {
         </div>
     </div>
   );
-}
+});
+
+CVPreview.displayName = "CVPreview";

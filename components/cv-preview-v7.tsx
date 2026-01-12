@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { CVData } from "@/types/cv";
-import { Download, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-context";
 import { motion } from "framer-motion";
@@ -12,17 +12,25 @@ import jsPDF from "jspdf";
 interface CVPreviewV7Props {
   data: CVData;
   onChange: (data: CVData) => void;
+  currentPage: number;
+  setCurrentPage: (page: number | ((p: number) => number)) => void;
+  totalPages: number;
+  setTotalPages: (pages: number) => void;
+  setIsGenerating: (generating: boolean) => void;
 }
 
-export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
+export interface CVPreviewV7Handle {
+  handleDownload: () => Promise<void>;
+}
+
+export const CVPreviewV7 = forwardRef<CVPreviewV7Handle, CVPreviewV7Props>(({ data, onChange, currentPage, setCurrentPage, totalPages, setTotalPages, setIsGenerating }, ref) => {
   const previewRef = useRef<HTMLDivElement>(null);
   const cvContainerRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
   const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
   const { isPremium } = useAuth();
-  const [currentPage, setCurrentPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
-
+  const [isGeneratingLocal, setIsGeneratingLocal] = useState(false);
+  
   // Adjustable margins in cm
   const [margins, setMargins] = useState({
     top: 1.5,
@@ -53,7 +61,9 @@ export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
         const pageContentHeightPx = (contentHeight / 29.7) * cvContainerHeightPx;
         const pagesNeeded = Math.ceil(actualContentHeight / pageContentHeightPx);
 
-        setTotalPages(Math.max(1, Math.min(pagesNeeded, 4)));
+        const pages = Math.max(1, Math.min(pagesNeeded, 4));
+        setTotalPages(pages);
+        setTotalPages(pages);
       }
     }, 200);
     return () => clearTimeout(timer);
@@ -102,11 +112,17 @@ export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const exportToPDF = async () => {
+  const handleDownload = async () => {
+    if (isGeneratingLocal) return;
     if (!cvContainerRef.current) return;
+
+    setIsGeneratingLocal(true);
+    setIsGenerating(true);
 
     if (!isPremium()) {
       setShowUpgradeMessage(true);
+      setIsGeneratingLocal(false);
+      setIsGenerating(false);
       return;
     }
 
@@ -166,8 +182,14 @@ export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
       });
 
       setCurrentPage(originalPage);
+      setIsGeneratingLocal(false);
+      setIsGenerating(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    handleDownload
+  }));
 
   return (
     <div className="h-full overflow-y-auto bg-slate-900/30">
@@ -198,45 +220,6 @@ export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
             </div>
           </motion.div>
         )}
-
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-4">
-          {/* Page Navigation */}
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button
-              onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-              disabled={currentPage === 0}
-              variant="outline"
-              size="sm"
-              className="gap-1 text-xs"
-            >
-              ←
-            </Button>
-
-            <span className="text-xs sm:text-sm text-foreground/70 whitespace-nowrap">
-              Seite {currentPage + 1} / {totalPages}
-            </span>
-
-            <Button
-              onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={currentPage >= totalPages - 1}
-              variant="outline"
-              size="sm"
-              className="gap-1 text-xs"
-            >
-              →
-            </Button>
-          </div>
-
-          {/* Export Button */}
-          <Button
-            onClick={exportToPDF}
-            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            PDF Exportieren
-          </Button>
-        </div>
 
         {/* Preview Container - A4 Format */}
         <div
@@ -363,7 +346,7 @@ export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
               <div
                 ref={previewRef}
                 style={{
-                  fontFamily: data.fontFamily || "Arial",
+                  fontFamily: data.fontFamily || "Montserrat",
                   color: "#1e293b",
                 }}
               >
@@ -643,4 +626,6 @@ export function CVPreviewV7({ data, onChange }: CVPreviewV7Props) {
       </div>
     </div>
   );
-}
+});
+
+CVPreviewV7.displayName = "CVPreviewV7";

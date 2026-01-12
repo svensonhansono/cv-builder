@@ -338,27 +338,15 @@ export function CVForm({ data, onChange }: CVFormProps) {
                   </div>
                 </div>
 
-                {/* Straße & PLZ/Ort */}
-                <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="street">Straße & Hausnummer</Label>
-                    <Input
-                      id="street"
-                      value={data.personalInfo.street || ""}
-                      onChange={(e) => updatePersonalInfo("street", e.target.value)}
-                      placeholder="Musterstraße 123"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="location">PLZ & Ort</Label>
-                    <Input
-                      id="location"
-                      value={data.personalInfo.location}
-                      onChange={(e) => updatePersonalInfo("location", e.target.value)}
-                      placeholder="10115 Berlin"
-                    />
-                  </div>
+                {/* Ort, PLZ & Straße */}
+                <div className="space-y-2">
+                  <Label htmlFor="location">Ort, PLZ & Straße</Label>
+                  <Input
+                    id="location"
+                    value={data.personalInfo.location}
+                    onChange={(e) => updatePersonalInfo("location", e.target.value)}
+                    placeholder="Berlin, 10176, Musterstraße 18"
+                  />
                 </div>
 
                 {/* Berufstitel */}
@@ -481,14 +469,14 @@ export function CVForm({ data, onChange }: CVFormProps) {
                     <Label htmlFor="fontFamily">Schriftart</Label>
                     <select
                       id="fontFamily"
-                      value={data.fontFamily || "Arial"}
+                      value={data.fontFamily || "Montserrat"}
                       onChange={(e) => onChange({ ...data, fontFamily: e.target.value })}
                       className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 [&>option]:text-black [&>option]:bg-white [&>optgroup]:text-black [&>optgroup]:bg-white"
                     >
                       <optgroup label="Serifenlose Schriften">
-                        <option value="Arial">Arial</option>
                         <option value="Montserrat">Montserrat</option>
                         <option value="Source Sans Pro">Source Sans Pro</option>
+                        <option value="Arial">Arial</option>
                         <option value="Calibri">Calibri</option>
                         <option value="Verdana">Verdana</option>
                         <option value="Helvetica">Helvetica</option>
@@ -531,15 +519,36 @@ export function CVForm({ data, onChange }: CVFormProps) {
         className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
         <div className="p-4 sm:p-5 lg:p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <Briefcase className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
-              <Input
-                value={data.sectionTitles?.experience || "Berufserfahrung"}
-                onChange={(e) => updateSectionTitle("experience", e.target.value)}
-                className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-                placeholder="Berufserfahrung"
+              <h2
+                className="text-lg sm:text-xl font-bold gradient-text outline-none"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e) => updateSectionTitle("experience", e.currentTarget.textContent || "Berufserfahrung")}
+              >
+                {data.sectionTitles?.experience || "Berufserfahrung"}
+              </h2>
+            </div>
+            {/* Spacer Control - inline */}
+            <div className="flex items-center gap-2 flex-1 max-w-[320px]">
+              <span className="text-xs text-foreground/50 whitespace-nowrap">Abstand zur vorderen Zeile:</span>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={Math.max(0, ((data.spacerBeforeExperience || "").match(/\n/g) || []).length)}
+                onChange={(e) => {
+                  const lines = parseInt(e.target.value);
+                  onChange({ ...data, spacerBeforeExperience: lines > 0 ? '\n'.repeat(lines) : '' });
+                }}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
+                title="Abstand zur oberen Zeile"
               />
+              <span className="text-xs text-foreground/60 w-4 text-right">
+                {Math.max(0, ((data.spacerBeforeExperience || "").match(/\n/g) || []).length)}
+              </span>
             </div>
             <button
               onClick={() => toggleSection("experience")}
@@ -552,27 +561,6 @@ export function CVForm({ data, onChange }: CVFormProps) {
                 <ChevronDown className="w-5 h-5 text-purple-400" />
               </motion.div>
             </button>
-          </div>
-
-          {/* Spacer Control */}
-          <div className="space-y-2 pt-2 border-t border-white/10">
-            <Label className="text-xs text-foreground/70">Abstand davor (Leerzeilen)</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="10"
-                value={Math.max(0, ((data.spacerBeforeExperience || "").match(/\n/g) || []).length)}
-                onChange={(e) => {
-                  const lines = parseInt(e.target.value);
-                  onChange({ ...data, spacerBeforeExperience: lines > 0 ? '\n'.repeat(lines) : '' });
-                }}
-                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <span className="text-sm text-foreground/60 w-8 text-right">
-                {Math.max(0, ((data.spacerBeforeExperience || "").match(/\n/g) || []).length)}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -745,15 +733,36 @@ export function CVForm({ data, onChange }: CVFormProps) {
         className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
         <div className="p-4 sm:p-5 lg:p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
-              <Input
-                value={data.sectionTitles?.education || "Ausbildung"}
-                onChange={(e) => updateSectionTitle("education", e.target.value)}
-                className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0"
-                placeholder="Ausbildung"
+              <h2
+                className="text-lg sm:text-xl font-bold gradient-text outline-none"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e) => updateSectionTitle("education", e.currentTarget.textContent || "Ausbildung")}
+              >
+                {data.sectionTitles?.education || "Ausbildung"}
+              </h2>
+            </div>
+            {/* Spacer Control - inline */}
+            <div className="flex items-center gap-2 flex-1 max-w-[320px]">
+              <span className="text-xs text-foreground/50 whitespace-nowrap">Abstand zur vorderen Zeile:</span>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={Math.max(0, ((data.spacerBeforeEducation || "").match(/\n/g) || []).length)}
+                onChange={(e) => {
+                  const lines = parseInt(e.target.value);
+                  onChange({ ...data, spacerBeforeEducation: lines > 0 ? '\n'.repeat(lines) : '' });
+                }}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
+                title="Abstand zur oberen Zeile"
               />
+              <span className="text-xs text-foreground/60 w-4 text-right">
+                {Math.max(0, ((data.spacerBeforeEducation || "").match(/\n/g) || []).length)}
+              </span>
             </div>
             <button
               onClick={() => toggleSection("education")}
@@ -766,27 +775,6 @@ export function CVForm({ data, onChange }: CVFormProps) {
                 <ChevronDown className="w-5 h-5 text-purple-400" />
               </motion.div>
             </button>
-          </div>
-
-          {/* Spacer Control */}
-          <div className="space-y-2 pt-2 border-t border-white/10">
-            <Label className="text-xs text-foreground/70">Abstand davor (Leerzeilen)</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="10"
-                value={Math.max(0, ((data.spacerBeforeEducation || "").match(/\n/g) || []).length)}
-                onChange={(e) => {
-                  const lines = parseInt(e.target.value);
-                  onChange({ ...data, spacerBeforeEducation: lines > 0 ? '\n'.repeat(lines) : '' });
-                }}
-                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <span className="text-sm text-foreground/60 w-8 text-right">
-                {Math.max(0, ((data.spacerBeforeEducation || "").match(/\n/g) || []).length)}
-              </span>
-            </div>
           </div>
         </div>
 
@@ -926,15 +914,36 @@ export function CVForm({ data, onChange }: CVFormProps) {
         className="glass rounded-lg sm:rounded-xl overflow-visible"
       >
         <div className="p-4 sm:p-5 lg:p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
               <Code className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400 flex-shrink-0" />
-              <Input
-                value={data.sectionTitles?.skills || "Skills"}
-                onChange={(e) => updateSectionTitle("skills", e.target.value)}
-                className="text-lg sm:text-xl font-bold gradient-text bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                placeholder="Skills"
+              <h2
+                className="text-lg sm:text-xl font-bold gradient-text outline-none"
+                contentEditable
+                suppressContentEditableWarning
+                onBlur={(e) => updateSectionTitle("skills", e.currentTarget.textContent || "Skills")}
+              >
+                {data.sectionTitles?.skills || "Skills"}
+              </h2>
+            </div>
+            {/* Spacer Control - inline */}
+            <div className="flex items-center gap-2 flex-1 max-w-[320px]">
+              <span className="text-xs text-foreground/50 whitespace-nowrap">Abstand zur vorderen Zeile:</span>
+              <input
+                type="range"
+                min="0"
+                max="10"
+                value={Math.max(0, ((data.spacerBeforeSkills || "").match(/\n/g) || []).length)}
+                onChange={(e) => {
+                  const lines = parseInt(e.target.value);
+                  onChange({ ...data, spacerBeforeSkills: lines > 0 ? '\n'.repeat(lines) : '' });
+                }}
+                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
+                title="Abstand zur oberen Zeile"
               />
+              <span className="text-xs text-foreground/60 w-4 text-right">
+                {Math.max(0, ((data.spacerBeforeSkills || "").match(/\n/g) || []).length)}
+              </span>
             </div>
             <button
               onClick={() => toggleSection("skills")}
@@ -947,27 +956,6 @@ export function CVForm({ data, onChange }: CVFormProps) {
                 <ChevronDown className="w-5 h-5 text-purple-400" />
               </motion.div>
             </button>
-          </div>
-
-          {/* Spacer Control */}
-          <div className="space-y-2 pt-2 border-t border-white/10">
-            <Label className="text-xs text-foreground/70">Abstand davor (Leerzeilen)</Label>
-            <div className="flex items-center gap-3">
-              <input
-                type="range"
-                min="0"
-                max="10"
-                value={Math.max(0, ((data.spacerBeforeSkills || "").match(/\n/g) || []).length)}
-                onChange={(e) => {
-                  const lines = parseInt(e.target.value);
-                  onChange({ ...data, spacerBeforeSkills: lines > 0 ? '\n'.repeat(lines) : '' });
-                }}
-                className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer slider"
-              />
-              <span className="text-sm text-foreground/60 w-8 text-right">
-                {Math.max(0, ((data.spacerBeforeSkills || "").match(/\n/g) || []).length)}
-              </span>
-            </div>
           </div>
         </div>
 

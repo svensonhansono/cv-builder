@@ -127,8 +127,7 @@
 
 /* CV Preview scaling for mobile devices */
 .cv-scale-wrapper {
-  overflow-x: auto;
-  overflow-y: visible;
+  overflow: visible;
   -webkit-overflow-scrolling: touch;
   padding-bottom: 20px;
 }

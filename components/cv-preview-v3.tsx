@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, forwardRef, useImperativeHandle } from "react";
 import { motion } from "framer-motion";
 import { CVData } from "@/types/cv";
 import { Button } from "@/components/ui/button";
-import { Download, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 import { useAuth } from "@/components/auth-context";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
@@ -12,13 +12,21 @@ import jsPDF from "jspdf";
 interface CVPreviewV3Props {
   data: CVData;
   onChange: (data: CVData) => void;
+  currentPage: number;
+  setCurrentPage: (page: number | ((p: number) => number)) => void;
+  totalPages: number;
+  setTotalPages: (pages: number) => void;
+  setIsGenerating: (generating: boolean) => void;
 }
 
-export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
+export interface CVPreviewV3Handle {
+  handleDownload: () => Promise<void>;
+}
+
+export const CVPreviewV3 = forwardRef<CVPreviewV3Handle, CVPreviewV3Props>(({ data, onChange, currentPage, setCurrentPage, totalPages, setTotalPages, setIsGenerating }, ref) => {
   const cvContainerRef = useRef<HTMLDivElement>(null);
   const contentContainerRef = useRef<HTMLDivElement>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [isGeneratingLocal, setIsGeneratingLocal] = useState(false);
   const [showUpgradeMessage, setShowUpgradeMessage] = useState(false);
   const { isPremium } = useAuth();
 
@@ -32,8 +40,6 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
 
   // Calculate page breaks based on current margins
   const contentHeight = 29.7 - margins.top - margins.bottom;
-
-  const [totalPages, setTotalPages] = useState(1);
 
   // Calculate total pages based on content height
   useEffect(() => {
@@ -89,14 +95,17 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
   };
 
   const handleDownload = async () => {
-    if (isGenerating) return;
+    if (isGeneratingLocal) return;
+
+    setIsGeneratingLocal(true);
+    setIsGenerating(true);
 
     if (!isPremium()) {
       setShowUpgradeMessage(true);
+      setIsGeneratingLocal(false);
+      setIsGenerating(false);
       return;
     }
-
-    setIsGenerating(true);
 
     // Hide margin guides during PDF export
     const marginGuides = document.querySelectorAll('[data-margin-guides]');
@@ -183,9 +192,14 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
         cvContainerRef.current.classList.add('glass');
       }
 
+      setIsGeneratingLocal(false);
       setIsGenerating(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    handleDownload
+  }));
 
   return (
     <div className="h-full overflow-y-auto">
@@ -224,51 +238,6 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
           className="w-full mx-auto"
           style={{ maxWidth: '210mm' }}
         >
-          {/* Top Bar */}
-          <div className="flex justify-between items-center mb-4 sm:mb-6">
-            {/* Page Navigation */}
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Button
-                onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
-                disabled={currentPage === 0}
-                variant="outline"
-                size="sm"
-                className="gap-1 text-xs"
-              >
-                ←
-              </Button>
-
-              <span className="text-xs sm:text-sm text-foreground/70 whitespace-nowrap">
-                Seite {currentPage + 1} / {totalPages}
-              </span>
-
-              <Button
-                onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
-                disabled={currentPage >= totalPages - 1}
-                variant="outline"
-                size="sm"
-                className="gap-1 text-xs"
-              >
-                →
-              </Button>
-            </div>
-
-            {/* Download Button */}
-            <Button
-              onClick={handleDownload}
-              disabled={isGenerating}
-              className="gap-2 text-xs sm:text-sm"
-            >
-              <Download className={`w-3 h-3 sm:w-4 sm:h-4 ${isGenerating ? 'animate-bounce' : ''}`} />
-              <span className="hidden sm:inline">
-                {isGenerating ? "PDF wird erstellt..." : "PDF Exportieren"}
-              </span>
-              <span className="sm:hidden">
-                {isGenerating ? "..." : "PDF"}
-              </span>
-            </Button>
-          </div>
-
           {/* CV Container Wrapper - scales on mobile */}
           <div className="cv-scale-wrapper origin-top">
           <div
@@ -277,7 +246,7 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
             style={{
               width: '210mm',
               height: '297mm',
-              fontFamily: data.fontFamily || 'Arial, sans-serif',
+              fontFamily: data.fontFamily || 'Montserrat, sans-serif',
               overflow: 'hidden',
             }}
           >
@@ -748,4 +717,6 @@ export function CVPreviewV3({ data, onChange }: CVPreviewV3Props) {
       </div>
     </div>
   );
-}
+});
+
+CVPreviewV3.displayName = "CVPreviewV3";

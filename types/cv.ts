@@ -86,6 +86,7 @@ export interface CVData {
   showSignature: boolean;
   coverLetter: CoverLetter;
   margins?: CVMargins;
+  colorScheme?: 'dark' | 'light'; // dark = white text on dark bg, light = black text on white bg
 }
 
 export type SubscriptionTier = "free" | "premium";
