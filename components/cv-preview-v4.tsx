@@ -83,8 +83,10 @@ export const CVPreviewV4 = forwardRef<CVPreviewV4Handle, CVPreviewV4Props>(({ da
 
   const formatDate = (date: string) => {
     if (!date) return "";
-    const [year, month, day] = date.split("-");
-    return `${month}/${year}`;
+    if (date.includes(".") || date.includes("/") || !date.includes("-")) return date;
+    const parts = date.split("-");
+    if (parts.length >= 2) return `${parts[1]}/${parts[0]}`;
+    return date;
   };
 
   // Handle dragging of margin lines
@@ -595,7 +597,7 @@ export const CVPreviewV4 = forwardRef<CVPreviewV4Handle, CVPreviewV4Props>(({ da
                             </span>
                           </div>
                           <div style={{ color: "#666" }}>
-                            {formatDate(exp.startDate)} - {exp.current ? "heute" : formatDate(exp.endDate)}
+                            {formatDate(exp.startDate)}{(exp.startDate && (exp.endDate || exp.current)) ? " - " : ""}{exp.current ? "heute" : formatDate(exp.endDate)}
                           </div>
                         </div>
                         <div className="mb-2" style={{ color: "#666" }}>
@@ -677,7 +679,7 @@ export const CVPreviewV4 = forwardRef<CVPreviewV4Handle, CVPreviewV4Props>(({ da
                             </span>
                           </div>
                           <div style={{ color: "#666" }}>
-                            {formatDate(edu.startDate)} - {edu.current ? "heute" : formatDate(edu.endDate)}
+                            {formatDate(edu.startDate)}{(edu.startDate && (edu.endDate || edu.current)) ? " - " : ""}{edu.current ? "heute" : formatDate(edu.endDate)}
                           </div>
                         </div>
                         <div style={{ color: "#666" }}>

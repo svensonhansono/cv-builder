@@ -98,8 +98,21 @@ export const CVPreview = forwardRef<CVPreviewHandle, CVPreviewProps>(({ data, on
 
   const formatDate = (date: string) => {
     if (!date) return "";
-    const [year, month, day] = date.split("-");
-    return `${day}.${month}.${year}`;
+    // Falls schon im deutschen Format oder nur Jahr, direkt zurückgeben
+    if (date.includes(".") || !date.includes("-")) {
+      return date;
+    }
+    // ISO Format YYYY-MM-DD zu DD.MM.YYYY konvertieren
+    const parts = date.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}.${month}.${year}`;
+    }
+    if (parts.length === 2) {
+      const [year, month] = parts;
+      return `${month}.${year}`;
+    }
+    return date;
   };
 
   // Handle dragging of margin lines
@@ -611,9 +624,11 @@ export const CVPreview = forwardRef<CVPreviewHandle, CVPreviewProps>(({ data, on
                               </p>
                             </div>
 
-                            <p className="text-xs sm:text-sm mb-2" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
-                              {formatDate(exp.startDate)} - {exp.current ? "Heute" : formatDate(exp.endDate)}
-                            </p>
+                            {(exp.startDate || exp.endDate || exp.current) && (
+                              <p className="text-xs sm:text-sm mb-2" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
+                                {formatDate(exp.startDate)}{(exp.startDate && (exp.endDate || exp.current)) ? " - " : ""}{exp.current ? "Heute" : formatDate(exp.endDate)}
+                              </p>
+                            )}
 
                             {exp.bulletPoints && exp.bulletPoints.length > 0 && exp.bulletPoints.some(bp => bp.trim()) && (
                               <div className="space-y-1">
@@ -736,9 +751,11 @@ export const CVPreview = forwardRef<CVPreviewHandle, CVPreviewProps>(({ data, on
                               </p>
                             </div>
 
-                            <p className="text-xs sm:text-sm" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
-                              {formatDate(edu.startDate)} - {edu.current ? "Heute" : formatDate(edu.endDate)}
-                            </p>
+                            {(edu.startDate || edu.endDate || edu.current) && (
+                              <p className="text-xs sm:text-sm" style={{ color: data.colorScheme === 'light' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)' }}>
+                                {formatDate(edu.startDate)}{(edu.startDate && (edu.endDate || edu.current)) ? " - " : ""}{edu.current ? "Heute" : formatDate(edu.endDate)}
+                              </p>
+                            )}
                           </motion.div>
                         ))}
                       </div>

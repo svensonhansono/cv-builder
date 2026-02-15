@@ -31,80 +31,22 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 
 const initialData: CVData = {
   personalInfo: {
-    firstName: "Anna",
-    lastName: "Mustermann",
-    email: "anna.mustermann@example.com",
-    phone: "+49 151 12345678",
-    location: "Berlin, 10176, Musterstraße 18",
-    title: "Senior Software Entwicklerin",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    location: "",
+    title: "",
     summary: "",
-    photoUrl: "https://images.unsplash.com/photo-1690444963408-9573a17a8058?w=400&h=400&fit=crop&crop=faces",
-    birthDate: "1990-05-15",
-    birthPlace: "Hamburg",
-    nationality: "deutsch",
-    maritalStatus: "ledig",
+    photoUrl: "",
+    birthDate: "",
+    birthPlace: "",
+    nationality: "",
+    maritalStatus: "",
   },
-  experiences: [
-    {
-      id: "1",
-      company: "Tech Solutions GmbH",
-      position: "Senior Software Entwicklerin",
-      startDate: "2020-03-01",
-      endDate: "",
-      current: true,
-      description: "",
-      bulletPoints: [
-        "Entwicklung und Wartung von Webanwendungen mit React und Node.js",
-        "Leitung eines Teams von 5 Entwicklern",
-        "Implementierung von CI/CD-Pipelines und automatisierten Tests",
-        "Code-Reviews und Mentoring von Junior-Entwicklern"
-      ]
-    },
-    {
-      id: "2",
-      company: "Digital Innovations AG",
-      position: "Full-Stack Entwicklerin",
-      startDate: "2017-06-01",
-      endDate: "2020-02-28",
-      current: false,
-      description: "",
-      bulletPoints: [
-        "Entwicklung von E-Commerce-Plattformen mit React und Python",
-        "Optimierung der Datenbankabfragen für bessere Performance",
-        "Integration von Zahlungsdienstleistern und APIs"
-      ]
-    }
-  ],
-  education: [
-    {
-      id: "1",
-      institution: "Technische Universität Berlin",
-      degree: "Master of Science",
-      field: "Informatik",
-      startDate: "2013-10-01",
-      endDate: "2016-09-30",
-      current: false,
-    },
-    {
-      id: "2",
-      institution: "Universität Hamburg",
-      degree: "Bachelor of Science",
-      field: "Informatik",
-      startDate: "2010-10-01",
-      endDate: "2013-09-30",
-      current: false,
-    }
-  ],
-  skills: [
-    { id: "1", name: "JavaScript / TypeScript", level: 5 },
-    { id: "2", name: "React / Next.js", level: 5 },
-    { id: "3", name: "Node.js / Express", level: 4 },
-    { id: "4", name: "Python / Django", level: 4 },
-    { id: "5", name: "SQL / PostgreSQL", level: 4 },
-    { id: "6", name: "Git / GitHub", level: 5 },
-    { id: "7", name: "Docker / Kubernetes", level: 3 },
-    { id: "8", name: "AWS / Cloud Services", level: 3 }
-  ],
+  experiences: [],
+  education: [],
+  skills: [],
   sectionTitles: {
     experience: "Berufserfahrung",
     education: "Ausbildung",
@@ -113,24 +55,24 @@ const initialData: CVData = {
   spacerBeforeExperience: "",
   spacerBeforeEducation: "",
   spacerBeforeSkills: "",
-  fontFamily: "Arial",
-  signatureLocation: "Berlin",
-  signatureDate: new Date().toISOString().split('T')[0],
-  signatureName: "Anna Mustermann",
+  fontFamily: "Montserrat",
+  signatureLocation: "",
+  signatureDate: "",
+  signatureName: "",
   signatureFont: "Dancing Script",
   signatureImageUrl: "",
   showSignature: false,
   coverLetter: {
-    recipientCompany: "Tech Solutions GmbH",
-    recipientName: "Frau Dr. Schmidt",
-    recipientPosition: "Personalabteilung",
-    recipientStreet: "Musterstraße 123",
-    recipientCity: "10115 Berlin",
-    subject: "Bewerbung als Senior Software Entwicklerin",
-    salutation: "Sehr geehrte Frau Dr. Schmidt",
-    introText: "mit großem Interesse habe ich Ihre Stellenausschreibung für die Position als Senior Software Entwicklerin gelesen. Als erfahrene Entwicklerin mit über 8 Jahren Berufserfahrung in der Softwareentwicklung möchte ich mich hiermit bei Ihnen bewerben.",
-    mainText: "In meiner aktuellen Position bei Tech Solutions GmbH leite ich ein Team von 5 Entwicklern und verantworte die Entwicklung und Wartung komplexer Webanwendungen. Dabei konnte ich umfangreiche Erfahrungen in der Arbeit mit modernen Technologien wie React, Node.js und Cloud-Services sammeln. Besonders wichtig ist mir dabei stets die Qualität des Codes sowie die enge Zusammenarbeit im Team.\n\nMeine Stärken liegen in der schnellen Einarbeitung in neue Technologien, der strukturierten Arbeitsweise und der Fähigkeit, komplexe technische Zusammenhänge verständlich zu kommunizieren. Diese Fähigkeiten möchte ich gerne in Ihrem Unternehmen einbringen und gemeinsam mit Ihrem Team innovative Lösungen entwickeln.",
-    closingText: "Über eine Einladung zu einem persönlichen Gespräch würde ich mich sehr freuen. Für Rückfragen stehe ich Ihnen jederzeit gerne zur Verfügung.",
+    recipientCompany: "",
+    recipientName: "",
+    recipientPosition: "",
+    recipientStreet: "",
+    recipientCity: "",
+    subject: "",
+    salutation: "",
+    introText: "",
+    mainText: "",
+    closingText: "",
     closing: "Mit freundlichen Grüßen",
   },
 };
@@ -804,8 +746,8 @@ export default function Dashboard() {
             </div>
             {activeView === "cv" ? (
               <>
-                {cvVersion === 1 && <CVPreview ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
-                {cvVersion === 2 && <CVPreviewV2 ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
+                {cvVersion === 1 && <CVPreviewV2 ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
+                {cvVersion === 2 && <CVPreview ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
                 {cvVersion === 3 && <CVPreviewV3 ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
                 {cvVersion === 4 && <CVPreviewV4 ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
                 {cvVersion === 5 && <CVPreviewV5 ref={previewRef} data={cvData} onChange={setCvData} currentPage={currentPage} setCurrentPage={setCurrentPage} totalPages={totalPages} setTotalPages={setTotalPages} setIsGenerating={setIsGeneratingPdf} />}
@@ -814,8 +756,8 @@ export default function Dashboard() {
               </>
             ) : (
               <>
-                {coverVersion === 1 && <CoverLetterA1 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}
-                {coverVersion === 2 && <CoverLetterA2 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}
+                {coverVersion === 1 && <CoverLetterA2 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}
+                {coverVersion === 2 && <CoverLetterA1 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}
                 {coverVersion === 3 && <CoverLetterA3 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}
                 {coverVersion === 4 && <CoverLetterA4 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}
                 {coverVersion === 5 && <CoverLetterA5 ref={previewRef} data={cvData} onChange={setCvData} setIsGenerating={setIsGeneratingPdf} />}

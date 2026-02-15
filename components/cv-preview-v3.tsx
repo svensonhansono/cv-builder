@@ -53,8 +53,11 @@ export const CVPreviewV3 = forwardRef<CVPreviewV3Handle, CVPreviewV3Props>(({ da
 
   const formatDate = (date: string) => {
     if (!date) return "";
-    const [year, month, day] = date.split("-");
-    return `${day}.${month}.${year}`;
+    if (date.includes(".") || !date.includes("-")) return date;
+    const parts = date.split("-");
+    if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    if (parts.length === 2) return `${parts[1]}.${parts[0]}`;
+    return date;
   };
 
   // Handle dragging of margin lines
@@ -559,7 +562,7 @@ export const CVPreviewV3 = forwardRef<CVPreviewV3Handle, CVPreviewV3Props>(({ da
                             {exp.company}
                           </span>
                           <span style={{ float: 'right' }}>
-                            {formatDate(exp.startDate)} - {exp.current ? "aktuell" : formatDate(exp.endDate)}
+                            {formatDate(exp.startDate)}{(exp.startDate && (exp.endDate || exp.current)) ? " - " : ""}{exp.current ? "aktuell" : formatDate(exp.endDate)}
                           </span>
                         </div>
                         {exp.bulletPoints && exp.bulletPoints.length > 0 && (
@@ -636,7 +639,7 @@ export const CVPreviewV3 = forwardRef<CVPreviewV3Handle, CVPreviewV3Props>(({ da
                             {edu.institution}
                           </span>
                           <span style={{ float: 'right' }}>
-                            {formatDate(edu.startDate)} - {edu.current ? "aktuell" : formatDate(edu.endDate)}
+                            {formatDate(edu.startDate)}{(edu.startDate && (edu.endDate || edu.current)) ? " - " : ""}{edu.current ? "aktuell" : formatDate(edu.endDate)}
                           </span>
                         </div>
                         {edu.degree.includes("Abschluss:") && (

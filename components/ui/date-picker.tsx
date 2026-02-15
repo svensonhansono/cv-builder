@@ -288,7 +288,7 @@ export function DatePicker({ value, onChange, disabled, placeholder = "Datum wä
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <span className={value ? "" : "text-muted-foreground"}>
           {value ? formatDisplayDate(value) : placeholder}

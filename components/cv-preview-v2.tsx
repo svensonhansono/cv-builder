@@ -53,8 +53,11 @@ export const CVPreviewV2 = forwardRef<CVPreviewV2Handle, CVPreviewV2Props>(({ da
 
   const formatDate = (date: string) => {
     if (!date) return "";
-    const [year, month, day] = date.split("-");
-    return `${day}.${month}.${year}`;
+    if (date.includes(".") || !date.includes("-")) return date;
+    const parts = date.split("-");
+    if (parts.length === 3) return `${parts[2]}.${parts[1]}.${parts[0]}`;
+    if (parts.length === 2) return `${parts[1]}.${parts[0]}`;
+    return date;
   };
 
   // Handle dragging of margin lines
@@ -595,7 +598,7 @@ export const CVPreviewV2 = forwardRef<CVPreviewV2Handle, CVPreviewV2Props>(({ da
                           {exp.company}
                         </p>
                         <p className="text-sm text-black mb-2">
-                          {formatDate(exp.startDate)} - {exp.current ? "heute" : formatDate(exp.endDate)}
+                          {formatDate(exp.startDate)}{(exp.startDate && (exp.endDate || exp.current)) ? " - " : ""}{exp.current ? "heute" : formatDate(exp.endDate)}
                         </p>
                         {exp.bulletPoints && exp.bulletPoints.length > 0 && (
                           <ul className="list-disc list-inside space-y-1 text-sm">
@@ -664,7 +667,7 @@ export const CVPreviewV2 = forwardRef<CVPreviewV2Handle, CVPreviewV2Props>(({ da
                           {edu.institution}
                         </p>
                         <p className="text-sm text-black">
-                          {formatDate(edu.startDate)} - {edu.current ? "heute" : formatDate(edu.endDate)}
+                          {formatDate(edu.startDate)}{(edu.startDate && (edu.endDate || edu.current)) ? " - " : ""}{edu.current ? "heute" : formatDate(edu.endDate)}
                         </p>
                       </div>
                     ))}
@@ -684,7 +687,7 @@ export const CVPreviewV2 = forwardRef<CVPreviewV2Handle, CVPreviewV2Props>(({ da
                         <h3 className="font-bold text-base mb-1" style={{ color: '#000000' }}>{cert.name}</h3>
                         <p className="text-sm mb-1">{cert.institution}, {cert.location}</p>
                         <p className="text-sm text-black mb-2">
-                          {formatDate(cert.startDate)} - {cert.current ? "heute" : formatDate(cert.endDate)}
+                          {formatDate(cert.startDate)}{(cert.startDate && (cert.endDate || cert.current)) ? " - " : ""}{cert.current ? "heute" : formatDate(cert.endDate)}
                         </p>
                         {cert.bulletPoints && cert.bulletPoints.length > 0 && (
                           <ul className="list-disc list-inside space-y-1 text-sm">
@@ -747,7 +750,7 @@ export const CVPreviewV2 = forwardRef<CVPreviewV2Handle, CVPreviewV2Props>(({ da
                         <h3 className="font-bold text-base mb-1" style={{ color: '#000000' }}>{vol.role}</h3>
                         <p className="text-sm mb-1">{vol.organization}, {vol.location}</p>
                         <p className="text-sm text-black mb-2">
-                          {formatDate(vol.startDate)} - {vol.current ? "heute" : formatDate(vol.endDate)}
+                          {formatDate(vol.startDate)}{(vol.startDate && (vol.endDate || vol.current)) ? " - " : ""}{vol.current ? "heute" : formatDate(vol.endDate)}
                         </p>
                         {vol.bulletPoints && vol.bulletPoints.length > 0 && (
                           <ul className="list-disc list-inside space-y-1 text-sm">

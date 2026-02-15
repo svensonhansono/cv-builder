@@ -71,8 +71,10 @@ export const CVPreviewV5 = forwardRef<CVPreviewV5Handle, CVPreviewV5Props>(({ da
 
   const formatDate = (date: string) => {
     if (!date) return "";
-    const [year, month] = date.split("-");
-    return `${month}.${year}`;
+    if (date.includes(".") || !date.includes("-")) return date;
+    const parts = date.split("-");
+    if (parts.length >= 2) return `${parts[1]}.${parts[0]}`;
+    return date;
   };
 
   // Handle dragging of margin lines
@@ -401,7 +403,7 @@ export const CVPreviewV5 = forwardRef<CVPreviewV5Handle, CVPreviewV5Props>(({ da
                       <div key={cert.id} className="text-xs" style={{ color: "#4a5568" }}>
                         <div className="font-semibold">{cert.name}</div>
                         <div>{cert.institution}</div>
-                        <div className="text-xs">{cert.startDate} - {cert.current ? "heute" : cert.endDate}</div>
+                        <div className="text-xs">{cert.startDate}{(cert.startDate && (cert.endDate || cert.current)) ? " - " : ""}{cert.current ? "heute" : cert.endDate}</div>
                       </div>
                     ))}
                   </div>
@@ -451,7 +453,7 @@ export const CVPreviewV5 = forwardRef<CVPreviewV5Handle, CVPreviewV5Props>(({ da
                             {exp.position}
                           </div>
                           <div className="text-sm" style={{ color: "#718096" }}>
-                            {formatDate(exp.startDate)} - {exp.current ? "aktuell" : formatDate(exp.endDate)}
+                            {formatDate(exp.startDate)}{(exp.startDate && (exp.endDate || exp.current)) ? " - " : ""}{exp.current ? "aktuell" : formatDate(exp.endDate)}
                           </div>
                         </div>
                         <div
@@ -519,7 +521,7 @@ export const CVPreviewV5 = forwardRef<CVPreviewV5Handle, CVPreviewV5Props>(({ da
                             {edu.degree}
                           </div>
                           <div className="text-sm" style={{ color: "#718096" }}>
-                            {formatDate(edu.startDate)} - {edu.current ? "aktuell" : formatDate(edu.endDate)}
+                            {formatDate(edu.startDate)}{(edu.startDate && (edu.endDate || edu.current)) ? " - " : ""}{edu.current ? "aktuell" : formatDate(edu.endDate)}
                           </div>
                         </div>
                         <div className="text-sm" style={{ color: "#4a5568" }}>
